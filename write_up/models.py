@@ -10,9 +10,9 @@ from django.db import models
 
 # Image file rename
 def get_file_path(instance, filename):
-    if instance.__class__.__name__ is 'Book':
+    if instance.collection_type == 'B':
         path = 'Covers/Book' + time.strftime('/%Y/%m/%d/')
-    elif instance.__class__.__name__ is 'Magazine':
+    elif instance.collection_type == 'M':
         path = 'Covers/Magazine' + time.strftime('/%Y/%m/%d/')
     else:
         return False

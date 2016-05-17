@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'user_custom',
     'publication',
     'write_up',
+    'engagement',
 ]
 
 MIDDLEWARE_CLASSES = [
