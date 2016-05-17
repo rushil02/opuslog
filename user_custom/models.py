@@ -23,12 +23,3 @@ class UserProfile(models.Model):
 
     def __unicode__(self):
         return self.user.get_full_name()
-
-
-class Contributor(models.Model):
-    contributor = models.ForeignKey(User)
-    share_XP = models.PositiveSmallIntegerField(default=0)
-    share_money = models.PositiveSmallIntegerField(default=0)
-
-    class Meta:
-        abstract = True

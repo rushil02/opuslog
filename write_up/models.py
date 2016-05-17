@@ -7,8 +7,6 @@ import time
 from django.contrib.auth.models import User
 from django.db import models
 
-from user_custom.models import Contributor
-
 
 # Image file rename
 def get_file_path(instance, filename):
@@ -26,7 +24,8 @@ def get_file_path(instance, filename):
 
 class WriteUp(models.Model):
     shelf = models.ForeignKey(User, null=True)
-    publication = models.ForeignKey('publication.Publication', null=True)
+    publication = models.ForeignKey('publication.Publication',
+                                    null=True)  # TODO: Can single write up have multiple publications?
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
@@ -39,34 +38,81 @@ class WriteUp(models.Model):
         elif self.publication:
             return self.publication
 
+    def save(self, *args, **kwargs):
+        if not self.validate():
+            raise AssertionError
+        super(WriteUp, self).save(*args, **kwargs)
 
-class ContributorList(Contributor):
+    def validate(self):
+        if self.shelf or self.publication:
+            return True
+        return False
+
+
+class ContributorList(models.Model):
+    contributor = models.ForeignKey(User, related_name='write_up_contributors')
+    share_XP = models.PositiveSmallIntegerField(default=0)
+    share_money = models.PositiveSmallIntegerField(default=0)
     write_up = models.ForeignKey(WriteUp, null=True)
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ("write_up", "contributor")
 
 
 class BaseDesign(models.Model):
+    """ Revision History """
     text = models.TextField()
 
+    def save(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        RevisionHistory.objects.create(parent=self, user=user, text=self.text)
+        super(BaseDesign, self).save(*args, **kwargs)
 
-class Book(models.Model):
+
+class Collection(models.Model):
     write_up = models.OneToOneField(WriteUp)
+    TYPE = (('B', 'Book'),
+            ('M', 'Magazine'),
+            )
+    collection_type = models.CharField(max_length=1, choices=TYPE)
     description = models.TextField()
     cover = models.ImageField(upload_to=get_file_path, null=True, blank=True)
 
 
-class Magazine(models.Model):
+class Article(models.Model):
     write_up = models.OneToOneField(WriteUp)
-    description = models.TextField()
-    cover = models.ImageField(upload_to=get_file_path, null=True, blank=True)
+    magazine = models.ForeignKey(Collection, null=True)
+    text = models.OneToOneField(BaseDesign)
 
 
-class Article(BaseDesign):
+class Chapter(models.Model):
+    book = models.OneToOneField(Collection)
+    text = models.OneToOneField(BaseDesign)
+
+
+class LiveWriting(BaseDesign):
+    """ No Revision History """
     write_up = models.OneToOneField(WriteUp)
-    magazine = models.ForeignKey(Magazine, null=True)
+
+    def save(self, *args, **kwargs):
+        super(BaseDesign, self).save(*args, **kwargs)
 
 
-class Chapter(BaseDesign):
-    book = models.ForeignKey(Book)
+class GroupWriting(BaseDesign):
+    """ No Revision History """
+    write_up = models.ForeignKey(WriteUp)
+    sequence = models.PositiveSmallIntegerField()
+    writer = models.ForeignKey(User)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        super(BaseDesign, self).save(*args, **kwargs)
+
+
+class RevisionHistory(models.Model):
+    parent = models.ForeignKey(BaseDesign)
+    user = models.ForeignKey(User)
+    text = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)

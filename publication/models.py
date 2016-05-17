@@ -3,8 +3,6 @@ from __future__ import unicode_literals
 from django.db import models
 from django.contrib.auth.models import User
 
-from user_custom.models import Contributor
-
 
 class Publication(models.Model):
     creator = models.OneToOneField(User)
@@ -14,7 +12,10 @@ class Publication(models.Model):
     update_time = models.DateTimeField(auto_now=True)
 
 
-class ContributorList(Contributor):
+class ContributorList(models.Model):
+    contributor = models.ForeignKey(User, related_name='publication_contributors')
+    share_XP = models.PositiveSmallIntegerField(default=0)
+    share_money = models.PositiveSmallIntegerField(default=0)
     publication = models.ForeignKey(Publication, null=True)
     LEVEL = (('A', 'Administrator'),
              ('E', 'Editor'),

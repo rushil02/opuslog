@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.google',
     'debug_toolbar',
+    'tinymce',
 
     'user_custom',
     'publication',
@@ -180,3 +181,7 @@ EMAIL_USE_TLS = True
 
 # Domain name settings
 WEBSITE_DOMAIN = 'www.opuslog.com'
+
+# django-tinymce
+TINYMCE_SPELLCHECKER = True
+TINYMCE_COMPRESSOR = True
