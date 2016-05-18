@@ -29,6 +29,7 @@ class RevisionHistory(models.Model):
 
     parent = models.ForeignKey('write_up.BaseDesign')
     user = models.ForeignKey(User)
+    title = models.CharField(max_length=250, null=True, blank=True)
     text = models.TextField()
     revision_num = models.PositiveSmallIntegerField()
     timestamp = models.DateTimeField(auto_now_add=True)
