@@ -8,6 +8,7 @@ class Publication(models.Model):
     creator = models.OneToOneField(User)
     name = models.CharField(max_length=150)
     XP = models.BigIntegerField(default=0)
+    money = models.BigIntegerField(default=0)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 

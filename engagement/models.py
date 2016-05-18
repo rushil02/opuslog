@@ -7,10 +7,12 @@ from django.db import models
 
 
 class Engagement(models.Model):
-    """ Everything extending this acts as a log
+    """
+    Everything extending this acts as a log
     A creator/user or publication can only once Engagement on an object
     actor -> can be either a user or publication
-    publication_user -> stores a value of acting user only if engagement is via publication """
+    publication_user -> stores a value of acting user only if engagement is via publication
+    """
 
     publication_user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     LIMIT = models.Q(app_label='publication',
@@ -26,8 +28,10 @@ class Engagement(models.Model):
 
 
 class VoteWriteUp(Engagement):
-    """ Log for Up Votes on Write ups
-    vote_type -> False:DownVote, True:UpVote """
+    """
+    Log for Up Votes on Write ups
+    vote_type -> False:DownVote, True:UpVote
+    """
 
     vote_type = models.BooleanField(default=True)
     write_up = models.ForeignKey('write_up.WriteUpCollection', on_delete=models.CASCADE)
@@ -37,9 +41,11 @@ class VoteWriteUp(Engagement):
 
 
 class Comment(Engagement):
-    """ Comments can not be deleted or edited but can be replied on (1 LEVEL).
+    """
+    Comments can not be deleted or edited but can be replied on (1 LEVEL).
     Deleting a comment removes the username from display
-    users can be tagged using the '@' key-letter """
+    users can be tagged using the '@' key-letter
+    """
 
     write_up = models.ForeignKey('write_up.WriteUpCollection', on_delete=models.CASCADE)
     comment_text = models.TextField(blank=False, null=False)
@@ -48,8 +54,10 @@ class Comment(Engagement):
 
 
 class VoteComment(Engagement):
-    """ Log for likes on Comments
-    vote_type -> False:DownVote, True:UpVote """
+    """
+    Log for likes on Comments
+    vote_type -> False:DownVote, True:UpVote
+    """
 
     vote_type = models.BooleanField(default=True)
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
