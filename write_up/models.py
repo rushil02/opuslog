@@ -7,8 +7,9 @@ import time
 from django.contrib.auth.models import User
 from django.db import models
 
+from publication.models import Publication
 
-# Image file rename
+
 def get_file_path(instance, filename):
     if instance.collection_type == 'B':
         path = 'Covers/Book' + time.strftime('/%Y/%m/%d/')
@@ -22,97 +23,143 @@ def get_file_path(instance, filename):
     return os.path.join(path, filename)
 
 
-class WriteUp(models.Model):
-    shelf = models.ForeignKey(User, null=True)
+class WriteUpCollection(models.Model):
+    """
+    A Write Up can belong to a user, a publisher or both.
+    Therefore this table acts as a complete index of a library.
+
+    Multiple ownership of a write up can be but should not be dealt here. This defies
+    the purpose of contributors and creates a confusion regarding the meaning of this table.
+
+    A user can push a writeup to its own publication, but not to a contributed publication/write_up.
+
+    Collection will be composed of units. It can be a book or Magazine. By default for every user
+    there will be a write up extending to a collection  marked as 'Independent'.
+    """
+
+    user = models.ForeignKey(User, null=True)
     publication = models.ForeignKey('publication.Publication',
-                                    null=True)  # TODO: Can single write up have multiple publications?
+                                    null=True)
+    name = models.CharField(max_length=250)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    TYPE = (('B', 'Book'),
+            ('M', 'Magazine'),
+            ('I', 'Independent'),
+            ('L', 'LiveWriting'),
+            ('G', 'GroupWriting'),
+            )
+    collection_type = models.CharField(max_length=1, choices=TYPE)
+    description = models.TextField()
+    cover = models.ImageField(upload_to=get_file_path, null=True, blank=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
     def __unicode__(self):
-        if self.shelf and self.publication:
-            return "'%s' & '%s'" % (self.shelf, self.publication)
-        elif self.shelf:
-            return self.shelf
-        elif self.publication:
-            return self.publication
+        return self.name
 
     def save(self, *args, **kwargs):
         if not self.validate():
             raise AssertionError
-        super(WriteUp, self).save(*args, **kwargs)
+        super(WriteUpCollection, self).save(*args, **kwargs)
 
     def validate(self):
-        if self.shelf or self.publication:
+        if self.user and self.publication:
+            if self.publication == Publication.objects.get(creator=self.user):
+                return True
+            return False
+        elif self.user or self.publication:
             return True
         return False
 
 
 class ContributorList(models.Model):
+    """ List of Contributor for each write up """
     contributor = models.ForeignKey(User, related_name='write_up_contributors')
     share_XP = models.PositiveSmallIntegerField(default=0)
     share_money = models.PositiveSmallIntegerField(default=0)
-    write_up = models.ForeignKey(WriteUp, null=True)
+    write_up = models.ForeignKey(WriteUpCollection, null=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ("write_up", "contributor")
 
+    def __unicode__(self):
+        return "'%s' of '%s'" % (self.contributor, self.write_up)
+
 
 class BaseDesign(models.Model):
-    """ Revision History """
+    """
+    Directly patched to Revision History Model.
+    Anything that is saved to this model is revised in a separate model.
+    For revisions - Save using method 'save_with_rev'
+    """
+
     text = models.TextField()
 
-    def save(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
-        RevisionHistory.objects.create(parent=self, user=user, text=self.text)
+    def save_with_rev(self, *args, **kwargs):
+        user = kwargs.pop('user', None)  # TODO: send post save signal with user custom signal
         super(BaseDesign, self).save(*args, **kwargs)
 
-
-class Collection(models.Model):
-    write_up = models.OneToOneField(WriteUp)
-    TYPE = (('B', 'Book'),
-            ('M', 'Magazine'),
-            )
-    collection_type = models.CharField(max_length=1, choices=TYPE)
-    description = models.TextField()
-    cover = models.ImageField(upload_to=get_file_path, null=True, blank=True)
+    def __unicode__(self):
+        return str(self.id)
 
 
-class Article(models.Model):
-    write_up = models.OneToOneField(WriteUp)
-    magazine = models.ForeignKey(Collection, null=True)
+class Unit(models.Model):
+    """ Unit can be Article can be created independently or under"""
+    write_up = models.OneToOneField(WriteUpCollection)
     text = models.OneToOneField(BaseDesign)
+
+    def __unicode__(self):
+        return self.write_up
 
 
 class Chapter(models.Model):
-    book = models.OneToOneField(Collection)
+    name = models.CharField(max_length=250)
     text = models.OneToOneField(BaseDesign)
 
 
-class LiveWriting(BaseDesign):
+class LiveWriting(models.Model):
     """ No Revision History """
-    write_up = models.OneToOneField(WriteUp)
+    write_up = models.OneToOneField(WriteUpCollection)
+    text = models.OneToOneField(BaseDesign)
 
-    def save(self, *args, **kwargs):
-        super(BaseDesign, self).save(*args, **kwargs)
+    def __unicode__(self):
+        return self.write_up
 
 
-class GroupWriting(BaseDesign):
-    """ No Revision History """
-    write_up = models.ForeignKey(WriteUp)
+class GroupWriting(models.Model):  # TODO: Celery task to unlock objects, calculate X & Y min max
+    """
+    For Group writing events. Only for users and not Publications.
+    Sequentially users can add on to a story/article.
+    Concurrent development is to be avoided as it violates the concept (until stories can be branched).
+    No Revision History
+    Locking mechanism to avoid concurrent development: While the user is actively extending the
+    article, every 'X' min. make an api call to keep the object locked. After 'Y' min ask the user to
+    fill captcha to rest 'Y' timer. If either X or Y exceeds, unlock the table back. and make the current session void.
+    """
+
+    write_up = models.OneToOneField(WriteUpCollection)
+    closed_group = models.BooleanField(default=False)
+    closed_group_users = models.ManyToManyField(User)
+    active = models.BooleanField(default=True)
+    lock = models.BooleanField(default=False)
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
+
+    def __unicode__(self):
+        return self.write_up
+
+
+class GroupWritingText(models.Model):
+    """ Stores all the data filled by multiple users for single group written article.
+    Once written Text is non editable unless it is latest and the lock is open """
+
+    article = models.ForeignKey(GroupWriting)
     sequence = models.PositiveSmallIntegerField()
     writer = models.ForeignKey(User)
+    text = models.OneToOneField(BaseDesign)
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    def save(self, *args, **kwargs):
-        super(BaseDesign, self).save(*args, **kwargs)
-
-
-class RevisionHistory(models.Model):
-    parent = models.ForeignKey(BaseDesign)
-    user = models.ForeignKey(User)
-    text = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return self.article

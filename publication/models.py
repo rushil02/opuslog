@@ -11,6 +11,9 @@ class Publication(models.Model):
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
+    def __unicode__(self):
+        return self.name
+
 
 class ContributorList(models.Model):
     contributor = models.ForeignKey(User, related_name='publication_contributors')
@@ -25,3 +28,6 @@ class ContributorList(models.Model):
 
     class Meta:
         unique_together = ("publication", "contributor")
+
+    def __unicode__(self):
+        return "'%s' of '%s'" % (self.contributor, self.publication)

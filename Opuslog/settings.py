@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'publication',
     'write_up',
     'engagement',
+    'essential',
 ]
 
 MIDDLEWARE_CLASSES = [
