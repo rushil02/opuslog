@@ -5,13 +5,29 @@ from django.db import models
 
 
 class NotificationManager(models.Manager):
+    """
+    Manager for Notification model
+
+    get_notification ->  returns in format
+    {'notification-new': [{...}, {...}, {...}, ...],
+    'notification-old': [{...}, {...}, {...}, ...]}
+
+    get_all_notification -> returns all the notifications in format
+    [{...}, {...}, {...}, ...]
+    which are ordered by timestamp (descending)
+    """
+
     def get_queryset(self):
-        super(NotificationManager, self).get_queryset()
+        return super(NotificationManager, self).get_queryset()
 
     def get_notification(self, user):  # TODO: can this be optimized?
-        notified = self.get_queryset().filter(user=user, notified=True).values_list('data', flat=True)
+        """ only 5 'latest' 'already notified' notifications are fetched from db """
+        notified = self.get_queryset().filter(user=user, notified=True)[:5].values_list('data', flat=True)
         not_notified = self.get_queryset().filter(user=user, notified=False).values_list('data', flat=True)
         return {'notification-new': not_notified, 'notification-old': notified}
+
+    def get_all_notification(self, user):
+        return self.get_queryset().filter(user=user).values_list('data', flat=True)
 
 
 class Notification(models.Model):
@@ -53,6 +69,9 @@ class Notification(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     objects = NotificationManager()
+
+    class Meta:
+        ordering = ['-timestamp']
 
 
 class RevisionHistory(models.Model):

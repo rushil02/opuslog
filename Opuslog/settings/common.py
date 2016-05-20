@@ -25,8 +25,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '^@j4m-ff2wcago%qkos@4$q(8#0jm6rkp#k3#hcq#9xdy2a9lr'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -51,6 +49,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'debug_toolbar',
     'tinymce',
+    'rest_framework',  # TODO: remove?
 
     'user_custom',
     'publication',
@@ -146,7 +145,6 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-STATIC_ROOT = os.path.join(os.path.dirname(BASE_DIR), "static_dev", "static_root")  # Change for production environment
 
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, "static"),
@@ -154,7 +152,6 @@ STATICFILES_DIRS = (
 
 MEDIA_URL = '/media/'
 
-MEDIA_ROOT = os.path.join(os.path.dirname(BASE_DIR), "static_dev", "media_root")  # Change for production environment
 
 AUTHENTICATION_BACKENDS = (
     # Needed to login by username in Django admin, regardless of `allauth`
@@ -171,10 +168,6 @@ CITIES_LIGHT_TRANSLATION_LANGUAGES = ['en', ]
 CITIES_LIGHT_INCLUDE_COUNTRIES = ['IN', ]
 
 # Email settings
-if DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST_USER = 'moopoint1402@gmail.com'
 EMAIL_HOST_PASSWORD = 'sappy8086'
 EMAIL_HOST = 'smtp.gmail.com'
@@ -187,3 +180,8 @@ WEBSITE_DOMAIN = 'www.opuslog.com'
 # django-tinymce
 TINYMCE_SPELLCHECKER = True
 TINYMCE_COMPRESSOR = True
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAdminUser',),
+    'PAGE_SIZE': 10
+}

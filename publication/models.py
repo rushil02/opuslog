@@ -5,6 +5,8 @@ from django.contrib.auth.models import User
 
 
 class Publication(models.Model):
+    """ creator is the sole owner of a Publication """
+
     creator = models.OneToOneField(User)
     name = models.CharField(max_length=150)
     XP = models.BigIntegerField(default=0)
@@ -17,6 +19,11 @@ class Publication(models.Model):
 
 
 class ContributorList(models.Model):
+    """
+    Every activity of publication is attached via this list and not to Publication model.
+    On every new Publication creation, an entry will be created with owner set as the user.
+    """
+
     contributor = models.ForeignKey(User, related_name='publication_contributors')
     share_XP = models.PositiveSmallIntegerField(default=0)
     share_money = models.PositiveSmallIntegerField(default=0)
@@ -24,8 +31,11 @@ class ContributorList(models.Model):
     LEVEL = (('A', 'Administrator'),
              ('E', 'Editor'),
              ('N', 'Noob'),
+             ('O', 'Owner'),
              )
     level = models.CharField(max_length=1, choices=LEVEL)
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ("publication", "contributor")

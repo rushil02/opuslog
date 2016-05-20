@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -9,15 +8,12 @@ from django.db import models
 class Engagement(models.Model):
     """
     Everything extending this acts as a log
-    A creator/user or publication can only once Engagement on an object
-    actor -> can be either a user or publication
-    publication_user -> stores a value of acting user only if engagement is via publication
+    actor -> can be either a user or publication (via contributor list)
     """
 
-    publication_user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     LIMIT = models.Q(app_label='publication',
-                     model='publication') | models.Q(app_label='auth',
-                                                     model='user')
+                     model='contributorlist') | models.Q(app_label='auth',
+                                                         model='user')
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
     object_id = models.PositiveIntegerField()
     actor = GenericForeignKey('content_type', 'object_id')
@@ -37,10 +33,11 @@ class VoteWriteUp(Engagement):
     write_up = models.ForeignKey('write_up.WriteUpCollection', on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ("content_type", "object_id", "write_up")
+        unique_together = ("content_type", "object_id",
+                           "write_up")  # FIXME :PROBLEM unique together will not work with new Engagement model scheme
 
 
-class Comment(Engagement):
+class Comment(Engagement):  # TODO: user-tag and reply based notification
     """
     Comments can not be deleted or edited but can be replied on (1 LEVEL).
     Deleting a comment removes the username from display
@@ -75,7 +72,10 @@ class Subscriber(Engagement):
     Publisher can Subscribe Publisher
     Publisher can Subscribe User**
     """
-    content_type_2 = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=Engagement.LIMIT,
+    LIMIT2 = models.Q(app_label='publication',
+                      model='publication') | models.Q(app_label='auth',
+                                                      model='user')
+    content_type_2 = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT2,
                                        related_name='subscribed')
     object_id_2 = models.PositiveIntegerField()
     subscribed = GenericForeignKey('content_type_2', 'object_id_2')

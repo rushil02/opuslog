@@ -19,7 +19,7 @@ def get_file_path(instance, filename):
         return False
 
     ext = filename.split('.')[-1]
-    filename = "%s.%s" % (instance.write_up.uuid, ext)
+    filename = "%s.%s" % (instance.uuid, ext)
     return os.path.join(path, filename)
 
 
@@ -55,7 +55,7 @@ class WriteUpCollection(models.Model):
     update_time = models.DateTimeField(auto_now=True)
 
     def __unicode__(self):
-        return self.name
+        return self.title
 
     def save(self, *args, **kwargs):
         if not self.validate():
