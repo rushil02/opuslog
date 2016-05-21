@@ -22,6 +22,7 @@ class NotificationManager(models.Manager):
 
     def get_notification(self, user):  # TODO: can this be optimized?
         """ only 5 'latest' 'already notified' notifications are fetched from db """
+
         notified = self.get_queryset().filter(user=user, notified=True)[:5].values_list('data', flat=True)
         not_notified = self.get_queryset().filter(user=user, notified=False).values_list('data', flat=True)
         return {'notification-new': not_notified, 'notification-old': notified}
@@ -63,7 +64,7 @@ class Notification(models.Model):
     SALT as 'notification-opuslog'.
     """
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # FIXME: Add write_up and notification type
     data = JSONField()
     notified = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -72,31 +73,3 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-timestamp']
-
-
-class RevisionHistory(models.Model):
-    """ Stores textual revision history for BaseDesign model"""
-
-    parent = models.ForeignKey('write_up.BaseDesign')
-    user = models.ForeignKey(User)
-    title = models.CharField(max_length=250, null=True, blank=True)
-    text = models.TextField()
-    revision_num = models.PositiveSmallIntegerField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "'%s', revision: '%s'" % (self.parent, self.revision_num)
-
-
-class GroupWritingLockHistory(models.Model):
-    """ Stores request history made by a user to extend a Group writing Article """
-
-    article = models.ForeignKey('write_up.GroupWriting')
-    lock_request_user = models.ForeignKey(User)
-    lock_start_time = models.DateTimeField()
-    lock_last_request = models.DateTimeField()
-    void = models.BooleanField(default=False)
-    create_time = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "'%s' for '%s'" % (self.lock_request_user, self.article)

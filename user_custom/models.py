@@ -5,9 +5,6 @@ from django.contrib.auth.models import User
 from cities_light.models import Region, Country, City
 
 
-# Create your models here.
-
-
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
     dob = models.DateField(blank=True, null=True)

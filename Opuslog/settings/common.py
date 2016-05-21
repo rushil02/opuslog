@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'write_up',
     'engagement',
     'essential',
+    'log',
 ]
 
 MIDDLEWARE_CLASSES = [
