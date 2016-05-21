@@ -1,6 +1,6 @@
 import os
 
-BASE_DIR_local = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR_local = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
