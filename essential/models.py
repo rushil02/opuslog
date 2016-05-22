@@ -28,7 +28,7 @@ class NotificationManager(models.Manager):
 
         return self.get_queryset().filter(user=user).values_list('data', flat=True)
 
-    def notify(self, user=None, write_up=None, notification_type=None):
+    def notify(self, user=None, write_up=None, notification_type=None):  # TODO: set json data info scheme
         """
         Call this method to save new notification.
         Checks if a similar notification already exists then increases the
@@ -83,6 +83,8 @@ class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     write_up = models.ForeignKey('write_up.WriteUpCollection', on_delete=models.CASCADE)
     CHOICE = (('CO', 'Comment'),
+              ('CR', 'Comment Reply'),
+              ('CT', 'Comment Tagged'),
               ('UC', 'UpVote Comment'),
               ('DC', 'DownVote Comment'),
               ('UW', 'UpVote Write up'),

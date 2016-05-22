@@ -1,8 +1,12 @@
 from __future__ import unicode_literals
+import re
 
+from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+
+from essential.models import Notification
 
 
 class Engagement(models.Model):
@@ -38,7 +42,7 @@ class VoteWriteUp(Engagement):
         unique_together = ("content_type", "object_id", "write_up")
 
 
-class Comment(Engagement):  # TODO: user-tag and reply based notification
+class Comment(Engagement):
     """
     Comments can not be deleted or edited but can be replied on (1 LEVEL).
     Deleting a comment removes the username from display
@@ -51,6 +55,16 @@ class Comment(Engagement):  # TODO: user-tag and reply based notification
     down_votes = models.PositiveIntegerField(default=0)
     reply_to = models.ForeignKey("self", null=True)
     delete_request = models.BooleanField(default=False)
+
+    def parse_text(self):
+        username_list = [x.strip('@') for x in re.findall(r'\B@\w+', self.comment_text)]
+        for username in username_list:
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                pass
+            else:
+                Notification.objects.notify(user=user, write_up=self.write_up, notification_type='CT')
 
 
 class VoteComment(Engagement):
