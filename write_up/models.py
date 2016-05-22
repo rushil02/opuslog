@@ -25,7 +25,7 @@ def get_file_path(instance, filename):
 
 class WriteUpCollection(models.Model):
     """
-    A Write Up can belong to a user, a publisher or both.
+    A Write Up can belong to a user, a publication or both.  # FIXME
     Therefore this table acts as a complete index of a library.
 
     Multiple ownership of a write up can be but should not be dealt here. This defies
@@ -35,12 +35,15 @@ class WriteUpCollection(models.Model):
 
     Collection will be composed of units. It can be a book or Magazine. By default for every user
     there will be a write up extending to a collection  marked as 'Independent'.
+    user ->  holds the info who created the writeup
+    up_votes, down_votes, comments -> counters to avoid aggregate querying
     """
 
+    # FIXME: add generic foreign key to user and publication_contributorlist
     user = models.ForeignKey(User, null=True)
     publication = models.ForeignKey('publication.Publication',
                                     null=True)
-    title = models.CharField(max_length=250, null=True)
+    title = models.CharField(max_length=250, null=True, blank=True)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     TYPE = (('B', 'Book'),
             ('M', 'Magazine'),
@@ -51,6 +54,9 @@ class WriteUpCollection(models.Model):
     collection_type = models.CharField(max_length=1, choices=TYPE)
     description = models.TextField()
     cover = models.ImageField(upload_to=get_file_path, null=True, blank=True)
+    up_votes = models.PositiveIntegerField(default=0)
+    down_votes = models.PositiveIntegerField(default=0)
+    comments = models.PositiveIntegerField(default=0)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
@@ -73,11 +79,12 @@ class WriteUpCollection(models.Model):
 
 
 class ContributorList(models.Model):
-    """ List of Contributor for each write up """
+    """ It holds the ...
+    List of Contributor for each write up """
 
     contributor = models.ForeignKey(User, related_name='write_up_contributors')
-    share_XP = models.PositiveSmallIntegerField(default=0)
-    share_money = models.PositiveSmallIntegerField(default=0)
+    share_XP = models.DecimalField(default=0, max_digits=8, decimal_places=5)
+    share_money = models.DecimalField(default=0, max_digits=8, decimal_places=5)
     write_up = models.ForeignKey(WriteUpCollection, null=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
@@ -112,7 +119,10 @@ class BaseDesign(models.Model):
 class Unit(models.Model):
     """
     Unit acts as an intermediary table between write up collection and base design.
-    That is, it stores all written matter against every collection
+    That is, it stores all written matter against every collection.
+    text -> is a foreign key since one base design can belong to multiple write ups.
+            Eg. in case when an article belongs to multiple magazines.
+    Therefore, this is a intermediary log for all relations between Base design and Collection
     """
 
     write_up = models.ForeignKey(WriteUpCollection)
@@ -177,3 +187,18 @@ class GroupWritingText(models.Model):
 
     def __unicode__(self):
         return self.article
+
+
+class RevisionHistory(models.Model):
+    """ Stores textual revision history for BaseDesign model"""
+
+    parent = models.ForeignKey(BaseDesign)
+    user = models.ForeignKey(User)
+    title = models.CharField(max_length=250, null=True, blank=True)
+    text = models.TextField()
+    revision_num = models.PositiveSmallIntegerField()
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
+
+    def __unicode__(self):
+        return "'%s', revision: '%s'" % (self.parent, self.revision_num)

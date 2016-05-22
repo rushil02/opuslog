@@ -8,12 +8,14 @@ from django.db import models
 class Engagement(models.Model):
     """
     Everything extending this acts as a log
-    actor -> can be either a user or publication (via contributor list)
+    actor -> can be either a user or publication
+    publication_user -> stores the link to Contributor List model of publication app, in case the actor is publication
     """
 
+    publication_user = models.ForeignKey('publication.ContributorList', null=True)
     LIMIT = models.Q(app_label='publication',
-                     model='contributorlist') | models.Q(app_label='auth',
-                                                         model='user')
+                     model='publication') | models.Q(app_label='auth',
+                                                     model='user')
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
     object_id = models.PositiveIntegerField()
     actor = GenericForeignKey('content_type', 'object_id')
@@ -33,8 +35,7 @@ class VoteWriteUp(Engagement):
     write_up = models.ForeignKey('write_up.WriteUpCollection', on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ("content_type", "object_id",
-                           "write_up")  # FIXME :PROBLEM unique together will not work with new Engagement model scheme
+        unique_together = ("content_type", "object_id", "write_up")
 
 
 class Comment(Engagement):  # TODO: user-tag and reply based notification
@@ -46,6 +47,8 @@ class Comment(Engagement):  # TODO: user-tag and reply based notification
 
     write_up = models.ForeignKey('write_up.WriteUpCollection', on_delete=models.CASCADE)
     comment_text = models.TextField(blank=False, null=False)
+    up_votes = models.PositiveIntegerField(default=0)
+    down_votes = models.PositiveIntegerField(default=0)
     reply_to = models.ForeignKey("self", null=True)
     delete_request = models.BooleanField(default=False)
 

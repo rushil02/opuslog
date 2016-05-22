@@ -1,7 +1,7 @@
 from django.dispatch import receiver
 from django.db.models.signals import post_save
 
-from essential.models import RevisionHistory
+from write_up.models import RevisionHistory
 
 
 @receiver(post_save, sender='write_up.BaseDesign')
