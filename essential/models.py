@@ -26,7 +26,7 @@ class NotificationManager(models.Manager):
         which are ordered by timestamp (descending)
         """
 
-        return self.get_queryset().filter(user=user).values_list('data', flat=True)
+        return self.get_queryset().filter(user=user)
 
     def notify(self, user=None, write_up=None, notification_type=None):  # TODO: set json data info scheme
         """

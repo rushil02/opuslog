@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     'engagement',
     'essential',
     'log',
+    'admin_custom',
+    'staff_custom',
 ]
 
 MIDDLEWARE_CLASSES = [
