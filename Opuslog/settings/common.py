@@ -25,7 +25,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '^@j4m-ff2wcago%qkos@4$q(8#0jm6rkp#k3#hcq#9xdy2a9lr'
 
-
 ALLOWED_HOSTS = []
 
 
@@ -45,8 +44,8 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    'allauth.socialaccount.providers.facebook',
-    'allauth.socialaccount.providers.google',
+    # 'allauth.socialaccount.providers.facebook', # FIXME: uncomment when ready
+    # 'allauth.socialaccount.providers.google',  # FIXME: uncomment when ready, *tested - working*
     'debug_toolbar',
     'tinymce',
     'rest_framework',
@@ -146,13 +145,11 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, "static"),
 )
 
 MEDIA_URL = '/media/'
-
 
 AUTHENTICATION_BACKENDS = (
     # Needed to login by username in Django admin, regardless of `allauth`
@@ -181,8 +178,3 @@ WEBSITE_DOMAIN = 'www.opuslog.com'
 # django-tinymce
 TINYMCE_SPELLCHECKER = True
 TINYMCE_COMPRESSOR = True
-
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAdminUser',),
-    'PAGE_SIZE': 10
-}
