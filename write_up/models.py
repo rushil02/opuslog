@@ -1,3 +1,26 @@
+"""
+Actor and write_up relationship:
+A user or publication can create multiple write ups.
+There can be numerous contributors for each write_up irrespective
+of weather the contributor itself is a publisher or user.
+Therefore,
+    GFK(user, publisher) -> ContributorList <- write_up
+ContributorList registers the creator of write_up as primary owner
+with all the rights and permissions.
+Therefore every and any relationship between user/publication and write_up
+is held by the ContributorList.
+This method also supports the concept of guest writer per write_up for
+publications.
+
+The owner (publisher/user) can choose to set access
+level (show-in-their-feed/edit/delete) for each contributor (user/publisher).
+
+Write_up types and BaseDesign relationship:
+Since each type of write_up determines a different relationship
+with BaseDesign, an intermediary table is required to establish such
+relationship. BaseDeign will never be directly connected with WriteUpCollection.
+
+"""
 from __future__ import unicode_literals
 
 import uuid
@@ -25,7 +48,7 @@ def get_file_path(instance, filename):
 
 class WriteUpCollection(models.Model):
     """
-    A Write Up can belong to a user, a publication or both.  # FIXME
+    A Write Up can belong (primary owner) to a user, a publication but not both.
     Therefore this table acts as a complete index of a library.
 
     Multiple ownership of a write up can be but should not be dealt here. This defies
@@ -39,10 +62,6 @@ class WriteUpCollection(models.Model):
     up_votes, down_votes, comments -> counters to avoid aggregate querying
     """
 
-    # FIXME: add generic foreign key to user and publication_contributorlist
-    user = models.ForeignKey(User, null=True)
-    publication = models.ForeignKey('publication.Publication',
-                                    null=True)
     title = models.CharField(max_length=250, null=True, blank=True)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     TYPE = (('B', 'Book'),
