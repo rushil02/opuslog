@@ -153,6 +153,12 @@ STATICFILES_DIRS = (
 
 MEDIA_URL = '/media/'
 
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+
+
+# Django all-auth
+# http://django-allauth.readthedocs.io/en/latest/configuration.html
 AUTHENTICATION_BACKENDS = (
     # Needed to login by username in Django admin, regardless of `allauth`
     'django.contrib.auth.backends.ModelBackend',
@@ -160,12 +166,23 @@ AUTHENTICATION_BACKENDS = (
     # `allauth` specific authentication methods, such as login by e-mail
     'allauth.account.auth_backends.AuthenticationBackend',
 )
+ACCOUNT_ADAPTER = 'admin_custom.all_auth_adapter.CustomAccountAdapter'
+ACCOUNT_AUTHENTICATION_METHOD = 'username'  # Login field
+ACCOUNT_CONFIRM_EMAIL_ON_GET = False  # User has to click a button on the redirected page
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = LOGIN_REDIRECT_URL  # Redirect to '/'
+ACCOUNT_EMAIL_REQUIRED = True  # Email required for signing up
+ACCOUNT_EMAIL_SUBJECT_PREFIX = "Opuslog.com - "
+ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 3600  # User is blocked for this time after failure to repeatedly log in
 
+
+# used by django.contrib.site
 SITE_ID = 1
+
 
 # Cities-light settings
 CITIES_LIGHT_TRANSLATION_LANGUAGES = ['en', ]
 CITIES_LIGHT_INCLUDE_COUNTRIES = ['IN', ]
+
 
 # Email settings
 EMAIL_HOST_USER = 'moopoint1402@gmail.com'
@@ -174,8 +191,10 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
+
 # Domain name settings
 WEBSITE_DOMAIN = 'www.opuslog.com'
+
 
 # django-tinymce
 TINYMCE_SPELLCHECKER = True
