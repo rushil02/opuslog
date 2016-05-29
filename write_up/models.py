@@ -176,7 +176,13 @@ class BaseDesign(models.Model):
         return str(self.id)
 
 
-class Magazine(models.Model):
+class MagazineArticles(models.Model):
+    """
+    It is the intermediary table for Write up type 'Magazine' and its units 'article'.
+    A Magazine can have multiple articles. An article can wither be independent that is
+    to have an explicit relation with Writeup model or have implicit relation with base
+    design which depicts that the article solely belongs to the Magazine.
+    """
     magazine = models.ForeignKey(WriteUp)
     LIMIT = models.Q(app_label='write_up',
                      model='writeup') | models.Q(app_label='write_up',
@@ -184,20 +190,13 @@ class Magazine(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
                                      related_name='magazine_units')
     object_id = models.PositiveIntegerField()
-    units = GenericForeignKey('content_type', 'object_id')
+    article = GenericForeignKey('content_type', 'object_id')
 
 
-# ***ALTERNATE MAGAZINE MODEL***
-
-# class Magazine(models.Model):
-#     magazine = models.ForeignKey(WriteUp)
-#     shared_unit = models.ForeignKey(WriteUp, null=True)
-#     implicit_unit = models.OneToOneField(BaseDesign, null=True)
-
-
-class Book(models.Model):
+class BookChapter(models.Model):
+    """ Intermediary table for relation between Write up type 'Book' and chapter (Base Design). """
     write_up = models.ForeignKey(WriteUp)
-    text = models.OneToOneField(BaseDesign)
+    chapter = models.OneToOneField(BaseDesign)
 
     def __unicode__(self):
         return self.write_up
