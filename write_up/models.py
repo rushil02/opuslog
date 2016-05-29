@@ -10,15 +10,29 @@ with all the rights and permissions.
 Therefore every and any relationship between user/publication and write_up
 is held by the ContributorList.
 This method also supports the concept of guest writer per write_up for
-publications.
+publications. While it can completely handle multiple publication contribution on a
+write up, it's more of a question if the developer wants it or not.
 
 The owner (publisher/user) can choose to set access
 level (show-in-their-feed/edit/delete) for each contributor (user/publisher).
 
-Write_up types and BaseDesign relationship:
+Problem - a user can belong to 2 publications, which will get him/her extra gains
+          than it should. Resolution of such a behaviour is hectic at DBMS level.
+          A warning will be generated to both the sides in such scenario.
+        - Current scheme allows a publication and a user (of same publication) to
+          be contributor for same write_up. This has to be validated to avoid such
+          a case.
+
+It is important to carefully describe a single write_up which works as a 'datum'
+for Engagement Algorithm to calculate XP and money. Net Evaluation will be with
+respect to this datum and not a user or publication (money/XP earned by an actor).
+Those are for user representation purposes only and do not provide any
+significant evaluation for the system.
+
+Write_up types and BaseDesign relationship: (defines datum)
 Since each type of write_up determines a different relationship
 with BaseDesign, an intermediary table is required to establish such
-relationship. BaseDeign will never be directly connected with WriteUpCollection.
+relationship. BaseDeign will never be directly connected with WriteUp.
 
 """
 from __future__ import unicode_literals
@@ -28,6 +42,8 @@ import os
 import time
 
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 from publication.models import Publication
@@ -46,15 +62,15 @@ def get_file_path(instance, filename):
     return os.path.join(path, filename)
 
 
-class WriteUpCollection(models.Model):
+class WriteUp(models.Model):
     """
     A Write Up can belong (primary owner) to a user, a publication but not both.
-    Therefore this table acts as a complete index of a library.
+    This table acts as a complete index of a library without any reference to its owner.
 
-    Multiple ownership of a write up can be but should not be dealt here. This defies
-    the purpose of contributors and creates a confusion regarding the meaning of this table.
-
-    A user can push a writeup to its own publication, but not to a contributed publication/write_up.
+    Relation to any user is satisfied using the model 'ContributorList' with relation
+    attribute 'users'. Multiple ownership of a write up is dealt via the same aforementioned model.
+    On every new write up creation, an entry will be created in aforementioned model with owner set
+    as the user.
 
     Collection will be composed of units. It can be a book or Magazine. By default for every user
     there will be a write up extending to a collection  marked as 'Independent'.
@@ -76,6 +92,8 @@ class WriteUpCollection(models.Model):
     up_votes = models.PositiveIntegerField(default=0)
     down_votes = models.PositiveIntegerField(default=0)
     comments = models.PositiveIntegerField(default=0)
+    XP = models.PositiveIntegerField(default=0)
+    money = models.PositiveIntegerField(default=0)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
@@ -85,7 +103,7 @@ class WriteUpCollection(models.Model):
     def save(self, *args, **kwargs):
         if not self.validate():
             raise AssertionError
-        super(WriteUpCollection, self).save(*args, **kwargs)
+        super(WriteUp, self).save(*args, **kwargs)
 
     def validate(self):
         if self.user and self.publication:
@@ -97,19 +115,41 @@ class WriteUpCollection(models.Model):
         return False
 
 
+# TODO: create celery task to validate and update per write_up engagement based XP/money for user
 class ContributorList(models.Model):
-    """ It holds the ...
-    List of Contributor for each write up """
+    """
+    It holds the List of Contributor for each write up, therefore relation between any
+    user/publication entity and writeup entity is via this table. It is an intermediary
+    table for user/publication to writeup relation. The primary creator/owner of a writeup
+    is defined and marked using the 'is_owner' field.
 
-    contributor = models.ForeignKey(User, related_name='write_up_contributors')
+    Money or XP earned by a user or publication via a write_up is determined by this table.
+
+    permission_level determines the permitted interaction level between a contributor and
+    write up. Once set, it cannot be changed after a user accepts to contribute in the write up.
+    """
+
+    LIMIT = models.Q(app_label='publication',
+                     model='publication') | models.Q(app_label='auth',
+                                                     model='user')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
+                                     related_name='write_up_contributors')
+    object_id = models.PositiveIntegerField()
+    contributor = GenericForeignKey('content_type', 'object_id')
+    is_owner = models.BooleanField(default=False)
     share_XP = models.DecimalField(default=0, max_digits=8, decimal_places=5)
     share_money = models.DecimalField(default=0, max_digits=8, decimal_places=5)
-    write_up = models.ForeignKey(WriteUpCollection, null=True)
+    LEVEL = (('E', 'Can edit'),  # TODO: Extend list of tags as required
+             ('D', 'Can Delete'),
+             ('S', 'Show in their list'),
+             )
+    permission_level = models.CharField(max_length=1, choices=LEVEL)
+    write_up = models.ForeignKey(WriteUp, null=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ("write_up", "contributor")
+        unique_together = ("write_up", "object_id", "content_type")
 
     def __unicode__(self):
         return "'%s' of '%s'" % (self.contributor, self.write_up)
@@ -128,24 +168,36 @@ class BaseDesign(models.Model):
     update_time = models.DateTimeField(auto_now=True)
 
     def save_with_rev(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # TODO: send post save signal with user custom signal
+        user = kwargs.pop('user', None)  # TODO: send user
+        RevisionHistory.objects.create(user=user, parent=self, title=self.title, text=self.text)
         super(BaseDesign, self).save(*args, **kwargs)
 
     def __unicode__(self):
         return str(self.id)
 
 
-class Unit(models.Model):
-    """
-    Unit acts as an intermediary table between write up collection and base design.
-    That is, it stores all written matter against every collection.
-    text -> is a foreign key since one base design can belong to multiple write ups.
-            Eg. in case when an article belongs to multiple magazines.
-    Therefore, this is a intermediary log for all relations between Base design and Collection
-    """
+class Magazine(models.Model):
+    magazine = models.ForeignKey(WriteUp)
+    LIMIT = models.Q(app_label='write_up',
+                     model='writeup') | models.Q(app_label='write_up',
+                                                 model='basedesign')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
+                                     related_name='magazine_units')
+    object_id = models.PositiveIntegerField()
+    units = GenericForeignKey('content_type', 'object_id')
 
-    write_up = models.ForeignKey(WriteUpCollection)
-    text = models.ForeignKey(BaseDesign)
+
+# ***ALTERNATE MAGAZINE MODEL***
+
+# class Magazine(models.Model):
+#     magazine = models.ForeignKey(WriteUp)
+#     shared_unit = models.ForeignKey(WriteUp, null=True)
+#     implicit_unit = models.OneToOneField(BaseDesign, null=True)
+
+
+class Book(models.Model):
+    write_up = models.ForeignKey(WriteUp)
+    text = models.OneToOneField(BaseDesign)
 
     def __unicode__(self):
         return self.write_up
@@ -158,7 +210,7 @@ class LiveWriting(models.Model):
     closed group -> if only restricted group of people should be part of the event, then True
     """
 
-    write_up = models.OneToOneField(WriteUpCollection)
+    write_up = models.OneToOneField(WriteUp)
     text = models.OneToOneField(BaseDesign)
     closed_group = models.BooleanField(default=False)
     closed_group_users = models.ManyToManyField(User)
@@ -182,7 +234,7 @@ class GroupWriting(models.Model):  # TODO: Celery task to unlock objects, calcul
     closed group -> if only restricted group of people should be part of the event, then True
     """
 
-    write_up = models.OneToOneField(WriteUpCollection)
+    write_up = models.OneToOneField(WriteUp)
     closed_group = models.BooleanField(default=False)
     closed_group_users = models.ManyToManyField(User)
     active = models.BooleanField(default=True)
@@ -208,16 +260,18 @@ class GroupWritingText(models.Model):
         return self.article
 
 
-class RevisionHistory(models.Model):
-    """ Stores textual revision history for BaseDesign model"""
+class RevisionHistory(models.Model):  # TODO: handle same session saves in same entry
+    """
+    Stores textual revision history for BaseDesign model.
+    Sequence of revision is determined by update_time.
+    """
 
     parent = models.ForeignKey(BaseDesign)
     user = models.ForeignKey(User)
     title = models.CharField(max_length=250, null=True, blank=True)
     text = models.TextField()
-    revision_num = models.PositiveSmallIntegerField()
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
     def __unicode__(self):
-        return "'%s', revision: '%s'" % (self.parent, self.revision_num)
+        return "'%s', revision at: '%s'" % (self.parent, self.update_time)

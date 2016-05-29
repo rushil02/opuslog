@@ -36,7 +36,7 @@ class VoteWriteUp(Engagement):
     """
 
     vote_type = models.BooleanField(default=True)
-    write_up = models.ForeignKey('write_up.WriteUpCollection', on_delete=models.CASCADE)
+    write_up = models.ForeignKey('write_up.WriteUp', on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ("content_type", "object_id", "write_up")
@@ -49,7 +49,7 @@ class Comment(Engagement):
     users can be tagged using the '@' key-letter
     """
 
-    write_up = models.ForeignKey('write_up.WriteUpCollection', on_delete=models.CASCADE)
+    write_up = models.ForeignKey('write_up.WriteUp', on_delete=models.CASCADE)
     comment_text = models.TextField(blank=False, null=False)
     up_votes = models.PositiveIntegerField(default=0)
     down_votes = models.PositiveIntegerField(default=0)

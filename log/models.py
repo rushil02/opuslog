@@ -5,14 +5,14 @@ from django.db import models
 
 
 class AnonymousViewer(models.Model):
-    write_up = models.ForeignKey('write_up.WriteUpCollection')
+    write_up = models.ForeignKey('write_up.WriteUp')
     duration = models.PositiveSmallIntegerField(default=0)
     create_time = models.DateTimeField(auto_now_add=True)
 
 
 class RegisteredViewer(models.Model):
     user = models.ForeignKey(User)
-    write_up = models.ForeignKey('write_up.WriteUpCollection')
+    write_up = models.ForeignKey('write_up.WriteUp')
     duration = models.PositiveSmallIntegerField(default=0)
     create_time = models.DateTimeField(auto_now_add=True)
 

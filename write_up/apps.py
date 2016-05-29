@@ -5,6 +5,3 @@ from django.apps import AppConfig
 
 class WriteupConfig(AppConfig):
     name = 'write_up'
-
-    def ready(self):
-        pass

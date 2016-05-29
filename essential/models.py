@@ -53,7 +53,7 @@ class NotificationManager(models.Manager):
             raise AssertionError("Invalid arguments - None type arguments")
 
 
-class Notification(models.Model):
+class Notification(models.Model):  # TODO: make notification system more dumb
     """
     Stores User related Notifications.
     Publication Notification are stored by referring settings for every user-publication relation
@@ -81,7 +81,7 @@ class Notification(models.Model):
     """
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    write_up = models.ForeignKey('write_up.WriteUpCollection', on_delete=models.CASCADE)
+    write_up = models.ForeignKey('write_up.WriteUp', on_delete=models.CASCADE)
     CHOICE = (('CO', 'Comment'),
               ('CR', 'Comment Reply'),
               ('CT', 'Comment Tagged'),
