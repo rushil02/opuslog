@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 import re
 
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -60,8 +60,8 @@ class Comment(Engagement):
         username_list = [x.strip('@') for x in re.findall(r'\B@\w+', self.comment_text)]
         for username in username_list:
             try:
-                user = User.objects.get(username=username)
-            except User.DoesNotExist:
+                user = get_user_model().objects.get(username=username)
+            except get_user_model().DoesNotExist:
                 pass
             else:
                 Notification.objects.notify(user=user, write_up=self.write_up, notification_type='CT')

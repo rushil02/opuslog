@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
-from django.contrib.auth.models import User
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import models
+from django.conf import settings
 
 
 class NotificationManager(models.Manager):
@@ -80,7 +80,7 @@ class Notification(models.Model):  # TODO: make notification system more dumb
     SALT as 'notification-opuslog'.
     """
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     write_up = models.ForeignKey('write_up.WriteUp', on_delete=models.CASCADE)
     CHOICE = (('CO', 'Comment'),
               ('CR', 'Comment Reply'),
@@ -101,3 +101,16 @@ class Notification(models.Model):  # TODO: make notification system more dumb
 
     class Meta:
         ordering = ['-update_time']
+
+
+class Tag(models.Model):
+    """
+    Tags are defined on a writeup using a many to many relation
+    """
+
+    name = models.CharField(max_length=30)
+    TAG_TYPE = (('P', 'Primary'),
+                ('S', 'Secondary')
+                )
+    tag_type = models.CharField(max_length=1)
+    timestamp = models.DateTimeField(auto_now_add=True)

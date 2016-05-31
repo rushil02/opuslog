@@ -1,4 +1,7 @@
-class EngagementError(Exception):
-    """ Custom Exception
-    Used by models in Engagement app """
+class PermissionDenied(Exception):
+    """
+    Custom Exception
+    Used when a user does not hold a permission to access/manipulate certain data
+    """
+
     pass

@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.fields import GenericRelation
 
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
 
 
 class PublicationManager(models.Manager):
@@ -22,7 +22,7 @@ class Publication(models.Model):  # FIXME: Categories for Publication??
     name = models.CharField(max_length=150)
     XP = models.BigIntegerField(default=0)
     money = models.BigIntegerField(default=0)
-    users = models.ManyToManyField('user_custom.ExtendedUser', related_name='contributors_in_publication',
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='contributors_in_publication',
                                    through='publication.ContributorList',
                                    through_fields=('publication', 'contributor'))
     create_time = models.DateTimeField(auto_now_add=True)
@@ -54,7 +54,7 @@ class ContributorList(models.Model):
     do not depend on it. But every tag will have a default list of settings (not implemented at db level).
     """
 
-    contributor = models.ForeignKey('user_custom.ExtendedUser', related_name='publication_contributors')
+    contributor = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='publication_contributors')
     share_XP = models.DecimalField(default=0.0, max_digits=8, decimal_places=5)
     share_money = models.DecimalField(default=0.0, max_digits=8, decimal_places=5)
     publication = models.ForeignKey(Publication)

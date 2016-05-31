@@ -199,3 +199,7 @@ WEBSITE_DOMAIN = 'www.opuslog.com'
 # django-tinymce
 TINYMCE_SPELLCHECKER = True
 TINYMCE_COMPRESSOR = True
+
+
+# Extended Auth user model
+AUTH_USER_MODEL = 'user_custom.ExtendUser'
