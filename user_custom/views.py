@@ -1,9 +1,16 @@
 from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.core.exceptions import SuspiciousOperation
 from django.core.urlresolvers import reverse
 from django.http.response import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.views.generic import View
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from write_up.forms import WriteUpForm
 
 
 def check_user(request):
@@ -51,3 +58,56 @@ class RegisteredUser(MainView):
 
 def user_acc(request):
     return HttpResponse("Logged In")
+
+
+@login_required
+def create_edit_writeup(request, writeup_uuid=None):
+    user = request.user.extendeduser
+    template_name = ""
+    success_redirect_url = ""
+
+    if writeup_uuid:
+        try:
+            write_up = user.get_user_writeup_with_permission(writeup_uuid, 'E')
+        except Exception:
+            raise SuspiciousOperation()
+        else:
+            form = WriteUpForm(request.POST or None, instance=write_up)
+    else:
+        form = WriteUpForm(request.POST or None)
+
+    context = {
+        "form": form
+    }
+
+    if request.POST:
+        if form.is_valid():
+            write_up = form.save(commit=False)
+            write_up.save(owner=user)
+            return redirect(success_redirect_url)
+        else:
+            return render(request, template_name, context)
+    else:
+        return render(request, template_name, context)
+
+
+@api_view(['POST'])
+@permission_classes(IsAuthenticated, )
+def add_write_up_contributor(request):
+    user = request.user.extendeduser
+    write_up_uuid = request.POST['write_up_uuid']
+    contributor_username = request.POST['username']
+    permission_level = request.POST['permission_level']
+    share_XP = request.POST['share_XP']
+    share_money = request.POST['share_money']
+
+    if write_up_uuid and contributor_username and permission_level:
+        try:
+            write_up = user.get_user_writeup_with_permission(write_up_uuid, 'E')
+            contributor = User.objects.select_related('extendeduser').get(username=contributor_username)
+            contributor_user_obj = contributor.extendeduser
+        except:
+            return Response({"error": "something went wrong"})
+        else:
+            write_up.add_contributor(user, contributor_user_obj, permission_level, share_XP, share_money)
+            return Response({"status": "Success"})

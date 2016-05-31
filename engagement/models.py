@@ -18,8 +18,8 @@ class Engagement(models.Model):
 
     publication_user = models.ForeignKey('publication.ContributorList', null=True)
     LIMIT = models.Q(app_label='publication',
-                     model='publication') | models.Q(app_label='auth',
-                                                     model='user')
+                     model='publication') | models.Q(app_label='user_custom',
+                                                     model='extendeduser')
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
     object_id = models.PositiveIntegerField()
     actor = GenericForeignKey('content_type', 'object_id')
@@ -90,8 +90,8 @@ class Subscriber(Engagement):
     Publisher can Subscribe User**
     """
     LIMIT2 = models.Q(app_label='publication',
-                      model='publication') | models.Q(app_label='auth',
-                                                      model='user')
+                      model='publication') | models.Q(app_label='user_custom',
+                                                      model='extendeduser')
     content_type_2 = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT2,
                                        related_name='subscribed')
     object_id_2 = models.PositiveIntegerField()

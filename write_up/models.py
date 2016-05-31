@@ -41,10 +41,10 @@ import uuid
 import os
 import time
 
-from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models import Q
 
 from publication.models import Publication
 
@@ -60,6 +60,15 @@ def get_file_path(instance, filename):
     ext = filename.split('.')[-1]
     filename = "%s.%s" % (instance.uuid, ext)
     return os.path.join(path, filename)
+
+
+class WriteUpManager(models.Manager):
+    def get_queryset(self):
+        return super(WriteUpManager, self).get_queryset()
+
+    def create_writeup(self, title, collection_type, description, cover):
+        return self.get_queryset().create(title=title, collection_type=collection_type, description=description,
+                                          cover=cover)
 
 
 class WriteUp(models.Model):
@@ -97,15 +106,21 @@ class WriteUp(models.Model):
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
+    objects = WriteUpManager()
+
     def __unicode__(self):
         return self.title
 
     def save(self, *args, **kwargs):
         if not self.validate():
             raise AssertionError
+        exists = self.pk
+        owner = kwargs.pop('owner')
         super(WriteUp, self).save(*args, **kwargs)
+        if not exists:
+            self.set_owner(owner)
 
-    def validate(self):
+    def validate(self):  # FIXME: No Declaration of user and publication for this method
         if self.user and self.publication:
             if self.publication == Publication.objects.get(creator=self.user):
                 return True
@@ -113,6 +128,32 @@ class WriteUp(models.Model):
         elif self.user or self.publication:
             return True
         return False
+
+    def set_owner(self, owner):
+        return ContributorList.objects.create(contributer=owner, is_owner=True, level='E', write_up=self)
+
+    def add_contributor(self, administrator, contributor, level, share_XP, share_money):
+        return ContributorList.objects.create(contributer=contributor, permission_level=level, share_XP=share_XP,
+                                              share_money=share_money, write_up=self, added_by=administrator)
+
+        # def remove_contributor(self, contributor):
+        #     contributor_obj = ContributorList.objects.get()
+
+
+class ContributorListQuerySet(models.QuerySet):
+    def permission(self, permission_level):
+        return self.filter(Q(permission_level=permission_level) | Q(is_owner=True))
+
+    def for_write_up(self, write_up_uuid):
+        return self.select_related('write_up').get(write_up__uuid=write_up_uuid)
+
+
+class ContributorListManager(models.Manager):
+    def get_queryset(self):
+        return ContributorListQuerySet(self.model, using=self._db)
+
+    def get_contributor_with_permission_for_writeup(self, write_up_uuid, permission_level):
+        return self.get_queryset().permission(permission_level).for_write_up(write_up_uuid)
 
 
 # TODO: create celery task to validate and update per write_up engagement based XP/money for user
@@ -130,8 +171,8 @@ class ContributorList(models.Model):
     """
 
     LIMIT = models.Q(app_label='publication',
-                     model='publication') | models.Q(app_label='auth',
-                                                     model='user')
+                     model='publication') | models.Q(app_label='user_custom',
+                                                     model='extendeduser')
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
                                      related_name='write_up_contributors')
     object_id = models.PositiveIntegerField()
@@ -145,8 +186,11 @@ class ContributorList(models.Model):
              )
     permission_level = models.CharField(max_length=1, choices=LEVEL)
     write_up = models.ForeignKey(WriteUp, null=True)
+    added_by = models.ForeignKey('user_custom.ExtendedUser', null=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
+
+    objects = ContributorListManager()
 
     class Meta:
         unique_together = ("write_up", "object_id", "content_type")
@@ -212,7 +256,7 @@ class LiveWriting(models.Model):
     write_up = models.OneToOneField(WriteUp)
     text = models.OneToOneField(BaseDesign)
     closed_group = models.BooleanField(default=False)
-    closed_group_users = models.ManyToManyField(User)
+    closed_group_users = models.ManyToManyField('user_custom.ExtendedUser')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
@@ -235,7 +279,7 @@ class GroupWriting(models.Model):  # TODO: Celery task to unlock objects, calcul
 
     write_up = models.OneToOneField(WriteUp)
     closed_group = models.BooleanField(default=False)
-    closed_group_users = models.ManyToManyField(User)
+    closed_group_users = models.ManyToManyField('user_custom.ExtendedUser')
     active = models.BooleanField(default=True)
     lock = models.BooleanField(default=False)
     create_time = models.DateTimeField(auto_now_add=True)
@@ -251,7 +295,7 @@ class GroupWritingText(models.Model):
 
     article = models.ForeignKey(GroupWriting)
     sequence = models.PositiveSmallIntegerField()
-    writer = models.ForeignKey(User)
+    writer = models.ForeignKey('user_custom.ExtendedUser')
     text = models.OneToOneField(BaseDesign)
     timestamp = models.DateTimeField(auto_now_add=True)
 
@@ -260,13 +304,14 @@ class GroupWritingText(models.Model):
 
 
 class RevisionHistory(models.Model):  # TODO: handle same session saves in same entry
+    # FIXME: Why not from contributor list??
     """
     Stores textual revision history for BaseDesign model.
     Sequence of revision is determined by update_time.
     """
 
     parent = models.ForeignKey(BaseDesign)
-    user = models.ForeignKey(User)
+    user = models.ForeignKey('user_custom.ExtendedUser')
     title = models.CharField(max_length=250, null=True, blank=True)
     text = models.TextField()
     create_time = models.DateTimeField(auto_now_add=True)
