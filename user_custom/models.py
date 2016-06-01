@@ -27,13 +27,16 @@ class UserProfile(models.Model):
         return self.user.get_full_name()
 
 
-class ExtendUser(AbstractUser):
+class User(AbstractUser):
     """
-    This model will be used as handler for user where all reverse relations for generic foreign key is defined.
-    Subscribed relation will provide the subscriptions made by specific user.
-    Subscriptions relation will provide users/publications that have subscribed to specific user.
-    Related query name is reverse relationship in query for their respective generic foreign keys.
+    This model replaces default Auth.User model tom implement all reverse
+    relations for generic foreign key. Subscribed relation will provide the
+    subscriptions made by specific user. Subscriptions relation will provide
+    users/publications that have subscribed to specific user. Related query
+    name is reverse relationship in query for their respective generic foreign
+    keys.
     """
+
     write_up_votes = GenericRelation('engagement.VoteWriteUp', related_query_name='extended_user')
     write_up_comments = GenericRelation('engagement.Comment', related_query_name='extended_user')
     vote_comments = GenericRelation('engagement.VoteComment', related_query_name='extended_user')
@@ -41,6 +44,12 @@ class ExtendUser(AbstractUser):
     subscriptions = GenericRelation('engagement.Subscriber', 'object_id_2', 'content_type_2',
                                     related_query_name='extended_user_subscriptions')
     contribution = GenericRelation('write_up.ContributorList', related_query_name='extended_user')
+
+    def get_full_name(self):
+        super(User, self).get_full_name()
+
+    def get_short_name(self):
+        super(User, self).get_short_name()
 
     def get_user_writeup_with_permission(self, write_up_uuid, permission_level):
         try:

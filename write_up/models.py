@@ -169,7 +169,7 @@ class ContributorList(models.Model):
     is_owner = models.BooleanField(default=False)
     share_XP = models.DecimalField(default=0, max_digits=8, decimal_places=5)
     share_money = models.DecimalField(default=0, max_digits=8, decimal_places=5)
-    permissions = models.ManyToManyField('essential.Permission')
+    permissions = models.ManyToManyField('essential.Permission', related_name='writeup_permissions')
     write_up = models.ForeignKey(WriteUp, null=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)

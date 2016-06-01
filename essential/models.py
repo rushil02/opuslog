@@ -107,7 +107,7 @@ class Notification(models.Model):  # TODO: make notification system more dumb
         ordering = ['-update_time']
 
 
-class Tag(models.Model):  # TODO: Create tags in initialize_site
+class Tag(models.Model):
     """
     Tags are defined on a writeup/Publication using a many to many relation
     Primary tags are added manually by the developer and at least one such
@@ -135,6 +135,7 @@ class Permission(models.Model):
     """
 
     name = models.CharField(max_length=100)
+    help_text = models.CharField(max_length=250, null=True, blank=True)
     code_name = models.CharField(max_length=30)
     FOR_TYPE = (('W', 'Write up'),
                 ('P', 'Publication'),

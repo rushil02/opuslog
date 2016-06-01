@@ -65,7 +65,7 @@ class ContributorList(models.Model):
              ('O', 'Owner'),
              )
     level = models.CharField(max_length=1, choices=LEVEL)
-    permissions = models.ManyToManyField('essential.Permission')
+    permissions = models.ManyToManyField('essential.Permission', related_name='publication_permissions')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
