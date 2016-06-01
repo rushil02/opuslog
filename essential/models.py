@@ -103,9 +103,14 @@ class Notification(models.Model):  # TODO: make notification system more dumb
         ordering = ['-update_time']
 
 
-class Tag(models.Model):
+class Tag(models.Model):  # TODO: Create tags in initialize_site
     """
-    Tags are defined on a writeup using a many to many relation
+    Tags are defined on a writeup/Publication using a many to many relation
+    Primary tags are added manually by the developer and at least one such
+    tag is necessary on a writeup/Publication.
+    Secondary tags are populated by user entries. They are not compulsory on
+    a writeup/Publication but are used by the recommendation system for
+    better results.
     """
 
     name = models.CharField(max_length=30)
@@ -113,4 +118,20 @@ class Tag(models.Model):
                 ('S', 'Secondary')
                 )
     tag_type = models.CharField(max_length=1)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+
+class Permission(models.Model):  # TODO: Create permissions in initialize_site and set default for owner
+    """
+    Defines permission for each contributor in Writeup/Publication
+
+    Holds an entry 'all_perm' for owner which is set as default.
+    """
+
+    name = models.CharField(max_length=100)
+    code_name = models.CharField(max_length=30)
+    FOR_TYPE = (('W', 'Write up'),
+                ('P', 'Publication')
+                )
+    permission_for = models.CharField(max_length=1, choices=FOR_TYPE)
     timestamp = models.DateTimeField(auto_now_add=True)

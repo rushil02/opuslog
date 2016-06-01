@@ -102,6 +102,7 @@ class WriteUp(models.Model):
     comments = models.PositiveIntegerField(default=0)
     XP = models.PositiveIntegerField(default=0)
     money = models.PositiveIntegerField(default=0)
+    tags = models.ManyToManyField('essential.Tag')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
@@ -168,11 +169,7 @@ class ContributorList(models.Model):
     is_owner = models.BooleanField(default=False)
     share_XP = models.DecimalField(default=0, max_digits=8, decimal_places=5)
     share_money = models.DecimalField(default=0, max_digits=8, decimal_places=5)
-    LEVEL = (('E', 'Can edit'),  # TODO: Extend list of tags as required
-             ('D', 'Can Delete'),
-             ('S', 'Show in their list'),
-             )
-    permission_level = models.CharField(max_length=1, choices=LEVEL)
+    permissions = models.ManyToManyField('essential.Permission')
     write_up = models.ForeignKey(WriteUp, null=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)

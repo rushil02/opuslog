@@ -13,7 +13,7 @@ class PublicationManager(models.Manager):
         return self.get_queryset().create(name=name)
 
 
-class Publication(models.Model):  # FIXME: Categories for Publication??
+class Publication(models.Model):
     """
     Defines an actor entity as Publication. Relation to any user is satisfied
     using the model 'ContributorList' with relation attribute 'users'.
@@ -25,13 +25,14 @@ class Publication(models.Model):  # FIXME: Categories for Publication??
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='contributors_in_publication',
                                    through='publication.ContributorList',
                                    through_fields=('publication', 'contributor'))
+    tags = models.ManyToManyField('essential.Tag')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
     votes = GenericRelation('engagement.VoteWriteUp', related_query_name='publication')
     comments = GenericRelation('engagement.Comment', related_query_name='publication')
     vote_comments = GenericRelation('engagement.VoteComment', related_query_name='publication')
-    subscriped = GenericRelation('engagement.Subscriber', related_query_name='publication_subscribed')
+    subscribed = GenericRelation('engagement.Subscriber', related_query_name='publication_subscribed')
     subscriptions = GenericRelation('engagement.Subscriber', 'object_id_2', 'content_type_2',
                                     related_query_name='publication_subscriptions')
     contribution = GenericRelation('write_up.ContributorList', related_query_name='publication')
@@ -55,15 +56,16 @@ class ContributorList(models.Model):
     """
 
     contributor = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='publication_contributors')
+    publication = models.ForeignKey(Publication)
     share_XP = models.DecimalField(default=0.0, max_digits=8, decimal_places=5)
     share_money = models.DecimalField(default=0.0, max_digits=8, decimal_places=5)
-    publication = models.ForeignKey(Publication)
     LEVEL = (('A', 'Administrator'),  # TODO: Extend list of tags
              ('E', 'Editor'),
              ('N', 'Noob'),
              ('O', 'Owner'),
              )
     level = models.CharField(max_length=1, choices=LEVEL)
+    permissions = models.ManyToManyField('essential.Permission')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
@@ -72,3 +74,4 @@ class ContributorList(models.Model):
 
     def __unicode__(self):
         return "'%s' of '%s'" % (self.contributor, self.publication)
+
