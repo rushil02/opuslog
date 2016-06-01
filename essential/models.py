@@ -56,15 +56,18 @@ class NotificationManager(models.Manager):
 class Notification(models.Model):  # TODO: make notification system more dumb
     """
     Stores User related Notifications.
-    Publication Notification are stored by referring settings for every user-publication relation
-    and are generated for so
+    Publication Notification are stored by referring settings for every
+    user-publication relation and are generated for so.
 
-    details in JSON -> image <url> of actor (user/publication), publication or not, text to show, redirect url
+    details in JSON -> image <url> of actor (user/publication),
+                       publication or not, text to show, redirect url
 
     JSON format -> for each notification data
 
-    {'actor-image': '<image-url>', 'actor': 'actor-name', 'publication': 'True/False', 'contributor': 'True/False',
-    'acted-on': 'writ-up name', 'level': 'success/info/warning/danger', 'redirect-url': '<url>'}
+    {'actor-image': '<image-url>', 'actor': 'actor-name',
+    'publication': 'True/False', 'contributor': 'True/False',
+    'acted-on': 'writ-up name', 'level': 'success/info/warning/danger',
+    'redirect-url': '<url>'}
 
     actor, actor-image -> can be publisher or user
     all other details belong to the object acted on.
@@ -75,9 +78,10 @@ class Notification(models.Model):  # TODO: make notification system more dumb
     'write-up like'
     'write-up dislike' ...
 
-    A request will be needed on a notification click to mark it as notified. All new notifications will be marked as
-    notified once the request is received. The 'notified url' will be encrypted using django signing with user_id and
-    SALT as 'notification-opuslog'.
+    A request will be needed on a notification click to mark it as notified.
+    All new notifications will be marked as notified once the request is
+    received. The 'notified url' will be encrypted using django signing with
+    user_id and SALT as 'notification-opuslog'.
     """
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -121,17 +125,20 @@ class Tag(models.Model):  # TODO: Create tags in initialize_site
     timestamp = models.DateTimeField(auto_now_add=True)
 
 
-class Permission(models.Model):  # TODO: Create permissions in initialize_site and set default for owner
+class Permission(models.Model):
     """
     Defines permission for each contributor in Writeup/Publication
 
-    Holds an entry 'all_perm' for owner which is set as default.
+    Holds an entry 'all_perm_owner' for owner which is set as default. This is
+    a redundant check to avoid any missed relation. While 'is_owner' and
+    'level' is already set in the writeup and Publication models respectively.
     """
 
     name = models.CharField(max_length=100)
     code_name = models.CharField(max_length=30)
     FOR_TYPE = (('W', 'Write up'),
-                ('P', 'Publication')
+                ('P', 'Publication'),
+                ('B', 'Both')
                 )
     permission_for = models.CharField(max_length=1, choices=FOR_TYPE)
     timestamp = models.DateTimeField(auto_now_add=True)
