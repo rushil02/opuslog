@@ -1,16 +1,14 @@
 from django.contrib.auth import logout, get_user_model
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import SuspiciousOperation
+from django.core.exceptions import SuspiciousOperation, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.http.response import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.views.generic import View
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
-from write_up.forms import WriteUpForm
+from admin_custom.custom_errors import PermissionDenied
+from write_up.forms import WriteUpForm, AddContributorForm
 
 
 def check_user(request):
@@ -91,22 +89,36 @@ def create_edit_writeup(request, writeup_uuid=None):
         return render(request, template_name, context)
 
 
-@api_view(['POST'])
-@permission_classes(IsAuthenticated, )
-def add_write_up_contributor(request):
+@login_required
+def add_write_up_contributor(request, write_up_uuid):
     user = request.user
-    write_up_uuid = request.POST['write_up_uuid']
-    contributor_username = request.POST['username']
-    permission_level = request.POST['permission_level']
-    share_XP = request.POST['share_XP']
-    share_money = request.POST['share_money']
+    form = AddContributorForm(request.POST or None)
+    template_name = ""
+    success_redirect_url = ""
 
-    if write_up_uuid and contributor_username and permission_level:
-        try:
-            write_up = user.get_user_writeup_with_permission(write_up_uuid, 'E')
-            contributor = get_user_model().objects.get(username=contributor_username)
-        except:
-            return Response({"error": "something went wrong"})
+    context = {
+        "form": form
+    }
+
+    if request.POST:
+        if form.is_valid():
+
+            contributor_username = form.cleaned_data['username']
+            permission_level = form.cleaned_data['permission_level']
+            share_XP = form.cleaned_data['share_XP']
+            share_money = form.cleaned_data['share_money']
+
+            if write_up_uuid and contributor_username and permission_level:
+                try:
+                    write_up = user.get_user_writeup_with_permission(write_up_uuid, 'E')
+                    contributor = get_user_model().objects.get(username=contributor_username)
+                except (PermissionDenied, ObjectDoesNotExist):
+                    raise SuspiciousOperation()
+                else:
+                    # FIXME: send notification to contributor whether he likes to accept or not
+                    write_up.add_contributor(contributor, permission_level, share_XP, share_money)
+                    return redirect(success_redirect_url)
         else:
-            write_up.add_contributor(contributor, permission_level, share_XP, share_money)
-            return Response({"status": "Success"})
+            return render(request, template_name, context)
+    else:
+        return render(request, template_name, context)
