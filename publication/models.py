@@ -36,6 +36,7 @@ class Publication(models.Model):
     subscriptions = GenericRelation('engagement.Subscriber', 'object_id_2', 'content_type_2',
                                     related_query_name='publication_subscriptions')
     contribution = GenericRelation('write_up.ContributorList', related_query_name='publication')
+    request = GenericRelation('essential.Request', related_query_name='publication_request')
 
     objects = PublicationManager()
 

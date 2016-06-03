@@ -42,7 +42,7 @@ import os
 import time
 from datetime import datetime
 
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
@@ -105,6 +105,8 @@ class WriteUp(models.Model):
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
+    request = GenericRelation('essential.Request', related_query_name='write_up_request')
+
     objects = WriteUpManager()
 
     def __unicode__(self):
@@ -126,6 +128,9 @@ class WriteUp(models.Model):
 
         # def remove_contributor(self, contributor):
         #     contributor_obj = ContributorList.objects.get()
+
+    def get_all_contributors(self): # FIXME: exclude removed contributors
+        return self.contributorlist_set.all()
 
 
 class WriteupProfile(models.Model):
