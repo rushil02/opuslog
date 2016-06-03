@@ -40,6 +40,7 @@ from __future__ import unicode_literals
 import uuid
 import os
 import time
+from datetime import datetime
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -86,11 +87,11 @@ class WriteUp(models.Model):
     up_votes, down_votes, comments -> counters to avoid aggregate querying
     """
 
-    title = models.CharField(max_length=250, null=True, blank=True)
+    title = models.CharField(max_length=250)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     TYPE = (('B', 'Book'),
             ('M', 'Magazine'),
-            ('I', 'Independent'),
+            ('I', 'Independent Article'),
             ('L', 'LiveWriting'),
             ('G', 'GroupWriting'),
             )
@@ -100,8 +101,6 @@ class WriteUp(models.Model):
     up_votes = models.PositiveIntegerField(default=0)
     down_votes = models.PositiveIntegerField(default=0)
     comments = models.PositiveIntegerField(default=0)
-    XP = models.PositiveIntegerField(default=0)
-    money = models.PositiveIntegerField(default=0)
     tags = models.ManyToManyField('essential.Tag')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
@@ -127,6 +126,14 @@ class WriteUp(models.Model):
 
         # def remove_contributor(self, contributor):
         #     contributor_obj = ContributorList.objects.get()
+
+
+class WriteupProfile(models.Model):
+    write_up = models.OneToOneField(WriteUp)
+    XP = models.PositiveIntegerField(default=0)
+    money = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL)
+    last_assessed_time = models.DateTimeField(default=datetime.utcfromtimestamp(0))
 
 
 class ContributorListQuerySet(models.QuerySet):
@@ -204,27 +211,40 @@ class BaseDesign(models.Model):
         return str(self.id)
 
 
-class MagazineArticles(models.Model):
+class Article(models.Model):
+    """ An article can be related directly to a writeup or via a magazine. """
+    write_up = models.OneToOneField(WriteUp, null=True)
+    article_text = models.OneToOneField(BaseDesign)
+
+
+class MagazineArticle(models.Model):
     """
-    It is the intermediary table for Write up type 'Magazine' and its units 'article'.
-    A Magazine can have multiple articles. An article can wither be independent that is
-    to have an explicit relation with Writeup model or have implicit relation with base
-    design which depicts that the article solely belongs to the Magazine.
+    It is the intermediary table for Write up type 'Magazine' and its units
+    'article'. A Magazine can have multiple articles. An article's primary
+    can be another writeup from which the same is imported, else it can be
+    implicit to the Magazine.
     """
     magazine = models.ForeignKey(WriteUp)
-    LIMIT = models.Q(app_label='write_up',
-                     model='writeup') | models.Q(app_label='write_up',
-                                                 model='basedesign')
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
-                                     related_name='magazine_units')
-    object_id = models.PositiveIntegerField()
-    article = GenericForeignKey('content_type', 'object_id')
+    article = models.ForeignKey(Article)
+    CHOICES = (('I', 'Implicit'),
+               ('E', 'Explicit'))
+    relationship = models.CharField(max_length=1, choices=CHOICES)
+    sort_id = models.PositiveSmallIntegerField()
 
 
 class BookChapter(models.Model):
-    """ Intermediary table for relation between Write up type 'Book' and chapter (Base Design). """
-    write_up = models.ForeignKey(WriteUp)
-    chapter = models.OneToOneField(BaseDesign)
+    """
+    Intermediary table for relation between Write up type 'Book' and
+    chapter (Base Design). A Book can have multiple chapters. A chapter's
+    primary can be another writeup from which the same is imported, else it
+    can be implicit to the Magazine.
+    """
+    book = models.ForeignKey(WriteUp)
+    chapter = models.ForeignKey(BaseDesign)
+    CHOICES = (('I', 'Implicit'),
+               ('E', 'Explicit'))
+    relationship = models.CharField(max_length=1, choices=CHOICES)
+    sort_id = models.PositiveSmallIntegerField()
 
     def __unicode__(self):
         return self.write_up
