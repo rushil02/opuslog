@@ -1,4 +1,5 @@
 from django import forms
+from django.forms.formsets import formset_factory
 
 from write_up.models import WriteUp
 from write_up.models import ContributorList
@@ -20,3 +21,12 @@ class AddContributorForm(forms.Form):
     permission_level = forms.ChoiceField(widget=forms.Select(), choices=ContributorList.LEVEL)
     share_XP = forms.DecimalField(100, 0, max_digits=4, decimal_places=2)
     share_money = forms.DecimalField(100, 0, max_digits=4, decimal_places=2)
+
+
+class EditPermissionForm(forms.Form):
+    permission_level = forms.ChoiceField(widget=forms.Select(), choices=ContributorList.LEVEL)
+    remove = forms.BooleanField(required=False)
+    username = forms.CharField(widget=forms.TextInput(attrs={'class': 'disabled', 'readonly': 'readonly'}))
+
+
+EditPermissionFormSet = formset_factory(EditPermissionForm)

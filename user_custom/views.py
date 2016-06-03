@@ -8,7 +8,7 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.views.generic import View
 
 from admin_custom.custom_errors import PermissionDenied
-from write_up.forms import WriteUpForm, AddContributorForm
+from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
 
 
 def check_user(request):
@@ -67,7 +67,7 @@ def create_edit_writeup(request, writeup_uuid=None):
     if writeup_uuid:
         try:
             write_up = user.get_user_writeup_with_permission(writeup_uuid, 'E')
-        except Exception:
+        except PermissionDenied:
             raise SuspiciousOperation()
         else:
             form = WriteUpForm(request.POST or None, instance=write_up)
@@ -115,10 +115,49 @@ def add_write_up_contributor(request, write_up_uuid):
                 except (PermissionDenied, ObjectDoesNotExist):
                     raise SuspiciousOperation()
                 else:
-                    # FIXME: send notification to contributor whether he likes to accept or not
+                    # FIXME: send notification to contributor whether he likes to accept or not check if already exists
                     write_up.add_contributor(contributor, permission_level, share_XP, share_money)
                     return redirect(success_redirect_url)
         else:
             return render(request, template_name, context)
     else:
         return render(request, template_name, context)
+
+
+@login_required
+def edit_permission_view(request, write_up_uuid):
+    user = request.user
+    template_name = ""
+    success_redirect_url = ""
+
+    if not write_up_uuid:
+        raise SuspiciousOperation()
+    try:
+        write_up = user.get_user_writeup_with_permission(write_up_uuid, 'E')
+    except PermissionDenied:
+        raise SuspiciousOperation()
+    else:
+        contributors = write_up.get_all_contributors()
+        formset = EditPermissionFormSet(request.POST or None,
+                                        initial=[{'username': contributor, 'permission_level': contributor.permission_level}
+                                                 for contributor in contributors])
+        context = {
+            "formset": formset
+        }
+
+        if request.POST:
+            if formset.is_valid():
+                for (contributor, form) in zip(contributors, formset):
+                    remove = form.cleaned_data['remove']
+                    if remove:
+                        # FIXME: Remove the contributor
+                        pass
+                    elif contributor.permission_level != form.cleaned_data['permission_level']:
+                        contributor.permission_level = form.cleaned_data['permission_level']
+                        contributor.save()
+
+                return redirect(success_redirect_url)
+            else:
+                return render(request, template_name, context)
+        else:
+            return render(request, template_name, context)

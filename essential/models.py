@@ -1,4 +1,6 @@
 from __future__ import unicode_literals
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import models
 from django.conf import settings
@@ -114,3 +116,23 @@ class Tag(models.Model):
                 )
     tag_type = models.CharField(max_length=1)
     timestamp = models.DateTimeField(auto_now_add=True)
+
+
+class Request(models.Model):
+    LIMIT = models.Q(app_label='publication',
+                     model='publication') | models.Q(app_label='write_up',
+                                                     model='writeup')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
+                                     related_name='request')
+    object_id = models.PositiveIntegerField()
+    request_for = GenericForeignKey('content_type', 'object_id')
+    request_from = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='request_from')
+    request_to = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='request_to')
+    STATUS = (
+        ('A', 'Accepted'),
+        ('R', 'Rejected'),
+        ('P', 'Pending'),
+    )
+    status = models.CharField(max_length=1, choices=STATUS)
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)

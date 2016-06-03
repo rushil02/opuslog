@@ -31,10 +31,11 @@ class Publication(models.Model):  # FIXME: Categories for Publication??
     votes = GenericRelation('engagement.VoteWriteUp', related_query_name='publication')
     comments = GenericRelation('engagement.Comment', related_query_name='publication')
     vote_comments = GenericRelation('engagement.VoteComment', related_query_name='publication')
-    subscriped = GenericRelation('engagement.Subscriber', related_query_name='publication_subscribed')
+    subscribed = GenericRelation('engagement.Subscriber', related_query_name='publication_subscribed')
     subscriptions = GenericRelation('engagement.Subscriber', 'object_id_2', 'content_type_2',
                                     related_query_name='publication_subscriptions')
     contribution = GenericRelation('write_up.ContributorList', related_query_name='publication')
+    request = GenericRelation('essential.Request', related_query_name='publication_request')
 
     objects = PublicationManager()
 
