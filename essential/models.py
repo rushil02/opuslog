@@ -148,15 +148,31 @@ class Permission(models.Model):
 
 
 class Request(models.Model):
+    """ Request by or for a user/publication to contribute in a Publication/Writeup"""
+
     LIMIT = models.Q(app_label='publication',
                      model='publication') | models.Q(app_label='write_up',
                                                      model='writeup')
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
-                                     related_name='request')
-    object_id = models.PositiveIntegerField()
-    request_for = GenericForeignKey('content_type', 'object_id')
-    request_from = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='request_from')
-    request_to = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='request_to')
+    request_for_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
+                                                 related_name='request_for')
+    request_for_object_id = models.PositiveIntegerField()
+    request_for = GenericForeignKey('request_for_content_type', 'request_for_object_id')
+
+    LIMIT = models.Q(app_label='publication',
+                     model='publication') | models.Q(app_label='user_custom',
+                                                     model='user')
+    request_from_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
+                                                  related_name='request_from')
+    request_from_object_id = models.PositiveIntegerField()
+    request_from = GenericForeignKey('request_from_content_type', 'request_from_object_id')
+
+    LIMIT = models.Q(app_label='publication',
+                     model='publication') | models.Q(app_label='user_custom',
+                                                     model='user')
+    request_to_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
+                                                related_name='request_to_')
+    request_to_object_id = models.PositiveIntegerField()
+    request_to = GenericForeignKey('request_to_content_type', 'request_to_object_id')
     STATUS = (
         ('A', 'Accepted'),
         ('R', 'Rejected'),

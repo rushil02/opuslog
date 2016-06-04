@@ -37,13 +37,20 @@ class User(AbstractUser):
     keys.
     """
 
-    write_up_votes = GenericRelation('engagement.VoteWriteUp', related_query_name='extended_user')
-    write_up_comments = GenericRelation('engagement.Comment', related_query_name='extended_user')
-    vote_comments = GenericRelation('engagement.VoteComment', related_query_name='extended_user')
-    subscribed = GenericRelation('engagement.Subscriber', related_query_name='extended_user_subscribed')
+    write_up_votes = GenericRelation('engagement.VoteWriteUp', related_query_name='user')
+    write_up_comments = GenericRelation('engagement.Comment', related_query_name='user')
+    vote_comments = GenericRelation('engagement.VoteComment', related_query_name='user')
+    subscribed = GenericRelation('engagement.Subscriber', related_query_name='user_subscribed')
     subscriptions = GenericRelation('engagement.Subscriber', 'object_id_2', 'content_type_2',
-                                    related_query_name='extended_user_subscriptions')
-    contribution = GenericRelation('write_up.ContributorList', related_query_name='extended_user')
+                                    related_query_name='user_subscriptions')
+    contribution = GenericRelation('write_up.ContributorList', related_query_name='user')
+    sent_requests = GenericRelation('essential.Request', content_type_field='request_from_content_type',
+                                    object_id_field='request_from_object_id', related_query_name='user_sent_request')
+    received_requests = GenericRelation('essential.Request', content_type_field='request_to_content_type',
+                                        object_id_field='request_to_object_id',
+                                        related_query_name='user_received_request')
+    threads = GenericRelation('messaging_system.ThreadMembers', related_query_name='user')
+    flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='user')
 
     def get_full_name(self):
         super(User, self).get_full_name()

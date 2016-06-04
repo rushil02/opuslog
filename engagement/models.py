@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import re
 
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
@@ -19,7 +19,7 @@ class Engagement(models.Model):
     publication_user = models.ForeignKey('publication.ContributorList', null=True)
     LIMIT = models.Q(app_label='publication',
                      model='publication') | models.Q(app_label='user_custom',
-                                                     model='extendeduser')
+                                                     model='user')
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
     object_id = models.PositiveIntegerField()
     actor = GenericForeignKey('content_type', 'object_id')
@@ -57,6 +57,8 @@ class Comment(Engagement):
     reply_to = models.ForeignKey("self", null=True)
     delete_request = models.BooleanField(default=False)
 
+    flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='comment')
+
     def parse_text(self):
         username_list = [x.strip('@') for x in re.findall(r'\B@\w+', self.comment_text)]
         for username in username_list:
@@ -92,7 +94,7 @@ class Subscriber(Engagement):
     """
     LIMIT2 = models.Q(app_label='publication',
                       model='publication') | models.Q(app_label='user_custom',
-                                                      model='extendeduser')
+                                                      model='user')
     content_type_2 = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT2,
                                        related_name='subscribed')
     object_id_2 = models.PositiveIntegerField()

@@ -59,6 +59,8 @@ INSTALLED_APPS = [
     'log',
     'admin_custom',
     'staff_custom',
+    'moderator',
+    'messaging_system'
 ]
 
 MIDDLEWARE_CLASSES = [

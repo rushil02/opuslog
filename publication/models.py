@@ -39,7 +39,17 @@ class Publication(models.Model):
     subscriptions = GenericRelation('engagement.Subscriber', 'object_id_2', 'content_type_2',
                                     related_query_name='publication_subscriptions')
     contribution = GenericRelation('write_up.ContributorList', related_query_name='publication')
-    request = GenericRelation('essential.Request', related_query_name='publication_request')
+    for_requests = GenericRelation('essential.Request', content_type_field='request_for_content_type',
+                                   object_id_field='request_for_object_id',
+                                   related_query_name='publication_for_request')
+    sent_requests = GenericRelation('essential.Request', content_type_field='request_from_content_type',
+                                    object_id_field='request_from_object_id',
+                                    related_query_name='publication_sent_request')
+    received_requests = GenericRelation('essential.Request', content_type_field='request_to_content_type',
+                                        object_id_field='request_to_object_id',
+                                        related_query_name='publication_received_request')
+    threads = GenericRelation('messaging_system.ThreadMembers', related_query_name='publication')
+    flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='publication')
 
     objects = PublicationManager()
 
@@ -96,4 +106,3 @@ class ContributorList(models.Model):
 
     def __unicode__(self):
         return "'%s' of '%s'" % (self.contributor, self.publication)
-

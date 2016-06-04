@@ -105,7 +105,9 @@ class WriteUp(models.Model):
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
-    request = GenericRelation('essential.Request', related_query_name='write_up_request')
+    for_requests = GenericRelation('essential.Request', content_type_field='request_for_content_type',
+                                   object_id_field='request_for_object_id', related_query_name='write_up')
+    flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='write_up')
 
     objects = WriteUpManager()
 
@@ -129,7 +131,7 @@ class WriteUp(models.Model):
         # def remove_contributor(self, contributor):
         #     contributor_obj = ContributorList.objects.get()
 
-    def get_all_contributors(self): # FIXME: exclude removed contributors
+    def get_all_contributors(self):  # FIXME: exclude removed contributors
         return self.contributorlist_set.all()
 
 
@@ -281,7 +283,7 @@ class GroupWriting(models.Model):  # TODO: Celery task to unlock objects, calcul
     No Revision History
     Locking mechanism to avoid concurrent development: While the user is actively extending the
     article, every 'X' min. make an api call to keep the object locked. After 'Y' min ask the user to
-    fill captcha to rest 'Y' timer. If either X or Y exceeds, unlock the table back. and make the current session void.
+    fill captcha to reset 'Y' timer. If either X or Y exceeds, unlock the table back. and make the current session void.
 
     closed group -> if only restricted group of people should be part of the event, then True
     """
