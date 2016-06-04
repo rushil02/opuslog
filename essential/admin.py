@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from essential.models import Notification
+from essential.models import Notification, Tag, Permission
 
 
 class NotificationAdmin(admin.ModelAdmin):
@@ -9,3 +9,5 @@ class NotificationAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Notification, NotificationAdmin)
+admin.site.register(Tag)
+admin.site.register(Permission)

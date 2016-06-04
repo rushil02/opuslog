@@ -112,12 +112,12 @@ class WriteUp(models.Model):
     def __unicode__(self):
         return self.title
 
-    def save(self, *args, **kwargs):
-        exists = self.pk
-        owner = kwargs.pop('owner')
-        super(WriteUp, self).save(*args, **kwargs)
-        if not exists:
-            self.set_owner(owner)
+    # def save(self, *args, **kwargs):
+    #     exists = self.pk
+    #     owner = kwargs.pop('owner')
+    #     super(WriteUp, self).save(*args, **kwargs)
+    #     if not exists:
+    #         self.set_owner(owner)
 
     def set_owner(self, owner):
         return ContributorList.objects.create(contributer=owner, is_owner=True, level='E', write_up=self)
@@ -142,8 +142,8 @@ class WriteupProfile(models.Model):
 
 
 class ContributorListQuerySet(models.QuerySet):
-    def permission(self, permission_level):
-        return self.filter(Q(permission_level=permission_level) | Q(is_owner=True))
+    def permission(self, acc_perm_code):
+        return self.filter(Q(permissions__code_name=acc_perm_code) | Q(is_owner=True))
 
     def for_write_up(self, write_up_uuid):
         return self.select_related('write_up').get(write_up__uuid=write_up_uuid)
@@ -153,8 +153,8 @@ class ContributorListManager(models.Manager):
     def get_queryset(self):
         return ContributorListQuerySet(self.model, using=self._db)
 
-    def get_contributor_with_permission_for_writeup(self, write_up_uuid, permission_level):
-        return self.get_queryset().permission(permission_level).for_write_up(write_up_uuid)
+    def get_contributor_for_writeup_with_perm(self, write_up_uuid, acc_perm_code):
+        return self.get_queryset().permission(acc_perm_code).for_write_up(write_up_uuid)
 
 
 # TODO: create celery task to validate and update per write_up engagement based XP/money for user
@@ -173,9 +173,9 @@ class ContributorList(models.Model):
 
     LIMIT = models.Q(app_label='publication',
                      model='publication') | models.Q(app_label='user_custom',
-                                                     model='extendeduser')
+                                                     model='user')
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
-                                     related_name='write_up_contributors')
+                                     related_name='contributed_write_ups')
     object_id = models.PositiveIntegerField()
     contributor = GenericForeignKey('content_type', 'object_id')
     is_owner = models.BooleanField(default=False)

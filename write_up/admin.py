@@ -8,3 +8,5 @@ class WriteUpAdmin(admin.ModelAdmin):
 
 
 admin.site.register(WriteUp, WriteUpAdmin)
+admin.site.register(WriteupProfile)
+admin.site.register(ContributorList)

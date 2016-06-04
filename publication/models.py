@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
-from django.contrib.contenttypes.fields import GenericRelation
+import uuid
 
+from django.contrib.contenttypes.fields import GenericRelation
+from django.db.models import Q
 from django.db import models
 from django.conf import settings
 
@@ -20,6 +22,7 @@ class Publication(models.Model):
     """
 
     name = models.CharField(max_length=150)
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     XP = models.BigIntegerField(default=0)
     money = models.BigIntegerField(default=0)
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='contributors_in_publication',
@@ -47,6 +50,22 @@ class Publication(models.Model):
         return ContributorList.objects.create(contributer=user, publication=self, level='A')
 
 
+class ContributorListQuerySet(models.QuerySet):
+    def permission(self, acc_perm_code):
+        return self.filter(Q(permissions__code_name=acc_perm_code) | Q(level='C'))
+
+    def for_publication(self, publication_uuid):
+        return self.select_related('publication').get(publication__uuid=publication_uuid)
+
+
+class ContributorListManager(models.Manager):
+    def get_queryset(self):
+        return ContributorListQuerySet(self.model, using=self._db)
+
+    def get_contributor_for_publication_with_perm(self, publication_uuid, acc_perm_code):
+        return self.get_queryset().permission(acc_perm_code).for_publication(publication_uuid)
+
+
 class ContributorList(models.Model):
     """
     Every activity of publication is attached via this list and not to Publication model.
@@ -56,19 +75,21 @@ class ContributorList(models.Model):
     do not depend on it. But every tag will have a default list of settings (not implemented at db level).
     """
 
-    contributor = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='publication_contributors')
+    contributor = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='contributed_publications')
     publication = models.ForeignKey(Publication)
     share_XP = models.DecimalField(default=0.0, max_digits=8, decimal_places=5)
     share_money = models.DecimalField(default=0.0, max_digits=8, decimal_places=5)
     LEVEL = (('A', 'Administrator'),  # TODO: Extend list of tags
              ('E', 'Editor'),
              ('N', 'Noob'),
-             ('O', 'Owner'),
+             ('C', 'Creator'),
              )
     level = models.CharField(max_length=1, choices=LEVEL)
     permissions = models.ManyToManyField('essential.Permission', related_name='publication_permissions')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
+
+    objects = ContributorListManager()
 
     class Meta:
         unique_together = ("publication", "contributor")

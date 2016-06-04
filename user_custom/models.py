@@ -53,8 +53,7 @@ class User(AbstractUser):
 
     def get_user_writeup_with_permission(self, write_up_uuid, permission_level):
         try:
-            writeup_contributor = self.contribution.get_contributor_with_permission_for_writeup(write_up_uuid,
-                                                                                                permission_level)
+            writeup_contributor = self.contribution.get_contributor_for_writeup(write_up_uuid)
         except ObjectDoesNotExist:
             raise PermissionDenied
         else:
