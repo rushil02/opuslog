@@ -8,7 +8,6 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.views.generic import View
 
 from admin_custom.custom_errors import PermissionDenied
-from admin_custom.decorators import has_content_perm
 from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
 
 
@@ -162,8 +161,3 @@ def edit_permission_view(request, write_up_uuid):  # FIXME: Change permission us
                 return render(request, template_name, context)
         else:
             return render(request, template_name, context)
-
-
-@has_content_perm('see', 'W')
-def test_view(request):
-    return HttpResponse("DONE")
