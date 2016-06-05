@@ -302,7 +302,7 @@ class GroupWritingText(models.Model):
     sequence = models.PositiveSmallIntegerField()
     writer = models.ForeignKey(settings.AUTH_USER_MODEL)
     text = models.OneToOneField(BaseDesign)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    create_time = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
         return self.article

@@ -10,7 +10,7 @@ from django.conf import settings
 
 
 def get_logo_file_path(instance, filename):
-    path = 'PublicationEnvironment/Logo' + time.strftime('/%Y/%m/%d/')
+    path = 'Publication/Logo' + time.strftime('/%Y/%m/%d/')
     ext = filename.split('.')[-1]
     filename = "%s.%s" % (instance.publication.uuid, ext)
     return os.path.join(path, filename)
@@ -44,6 +44,7 @@ class Publication(models.Model):
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='contributors_in_publication',
                                    through='publication.ContributorList',
                                    through_fields=('publication', 'contributor'))
+    logo = models.ImageField(upload_to=get_logo_file_path, null=True, blank=True)
     tags = models.ManyToManyField('essential.Tag')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
@@ -126,11 +127,12 @@ class ContributorList(models.Model):
 
 
 class PublicationEnvironment(models.Model):
+    """ Defines the chosen Workspace Environment for users in a Publication. """
+
     publication = models.OneToOneField(Publication)
-    CHOICE = (('1', 'Theme 1 name'),
-              ('2', 'Theme 2 name'),
+    CHOICE = (('1', 'Dark Theme'),
+              ('2', 'Light theme'),
               )
     theme = models.CharField(max_length=1, choices=CHOICE)
-    logo = models.ImageField(upload_to=get_logo_file_path, null=True, blank=True)
     background = models.ImageField(upload_to=get_background_file_path, null=True, blank=True)
     update_time = models.DateTimeField(auto_now=True)

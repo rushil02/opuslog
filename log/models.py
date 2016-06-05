@@ -18,13 +18,22 @@ class RegisteredViewer(models.Model):
 
 
 class GroupWritingLockHistory(models.Model):
-    """ Stores lock request history made by a user to extend a Group writing Article """
+    """
+    Stores lock request history made by a user to extend a Group writing Article
+    last_x_request -> implements timer for automated requests
+    last_y_request -> implements timer for captcha requests
+    """
 
     article = models.ForeignKey('write_up.GroupWriting')
     lock_request_user = models.ForeignKey(settings.AUTH_USER_MODEL)
     lock_start_time = models.DateTimeField()
-    lock_last_request = models.DateTimeField()
-    void = models.BooleanField(default=False)
+    last_x_request = models.DateTimeField()
+    last_y_request = models.DateTimeField()
+    CHOICES = (('V', 'Void'),
+               ('A', 'Active'),
+               ('C', 'Complete')
+               )
+    status = models.CharField(max_length=1, choices=CHOICES)
     create_time = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):

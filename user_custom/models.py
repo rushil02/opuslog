@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+import time
+import os
+import uuid
 
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ObjectDoesNotExist
@@ -8,6 +11,13 @@ from cities_light.models import Region, Country, City
 from django.conf import settings
 
 from admin_custom.custom_errors import PermissionDenied
+
+
+def get_file_path(instance, filename):
+    path = 'User/ProfileImages' + time.strftime('/%Y/%m/%d/')
+    ext = filename.split('.')[-1]
+    filename = "%s.%s" % (instance.uuid, ext)
+    return os.path.join(path, filename)
 
 
 class UserProfile(models.Model):
@@ -41,6 +51,8 @@ class User(AbstractUser):
     """
 
     publication_identity = models.BooleanField(default=False)
+    profile_image = models.ImageField(upload_to=get_file_path)
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     write_up_votes = GenericRelation('engagement.VoteWriteUp', related_query_name='user')
     write_up_comments = GenericRelation('engagement.Comment', related_query_name='user')
