@@ -8,6 +8,7 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.views.generic import View
 
 from admin_custom.custom_errors import PermissionDenied
+from admin_custom.decorators import has_content_perm
 from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
 
 
@@ -44,6 +45,7 @@ class MainView(View):
         form = self.login_form_class(request.POST)
         if form.is_valid():
             # <process form cleaned data>
+            print "yellow"
             return HttpResponseRedirect('/success/')
 
         return render(request, self.template_name, {'form': form})
@@ -59,20 +61,12 @@ def user_acc(request):
 
 
 @login_required
-def create_edit_writeup(request, writeup_uuid=None):
+def create_writeup(request):
     user = request.user
     template_name = ""
     success_redirect_url = ""
 
-    if writeup_uuid:
-        try:
-            write_up = user.get_user_writeup_with_permission(writeup_uuid, 'E')
-        except PermissionDenied:
-            raise SuspiciousOperation()
-        else:
-            form = WriteUpForm(request.POST or None, instance=write_up)
-    else:
-        form = WriteUpForm(request.POST or None)
+    form = WriteUpForm(request.POST or None)
 
     context = {
         "form": form
@@ -80,13 +74,38 @@ def create_edit_writeup(request, writeup_uuid=None):
 
     if request.POST:
         if form.is_valid():
-            write_up = form.save(commit=False)
-            write_up.save(owner=user)
+            write_up = form.save()
+            write_up.set_owner(user)
             return redirect(success_redirect_url)
         else:
             return render(request, template_name, context)
     else:
         return render(request, template_name, context)
+
+
+@login_required
+@has_content_perm(acc_perm_code='CAN_EDIT', perm_for='W')  # fixme: add perm code to permission table
+def edit_write_up(request, *args, **kwargs):
+    template_name = ""
+    redirect_success_url = ""
+    contributor = kwargs.get('contributor')
+    try:
+        write_up = contributor.write_up
+    except ObjectDoesNotExist:
+        raise SuspiciousOperation()
+    else:
+        form = WriteUpForm(request.POST or None, instance=write_up)
+        context = {
+            "form": form
+        }
+        if request.POST:
+            if form.is_valid():
+                form.save()
+                return redirect(redirect_success_url)
+            else:
+                return render(request, template_name, context)
+        else:
+            return render(request, template_name, context)
 
 
 @login_required

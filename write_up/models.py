@@ -112,24 +112,26 @@ class WriteUp(models.Model):
     def __unicode__(self):
         return self.title
 
-    # def save(self, *args, **kwargs):
-    #     exists = self.pk
-    #     owner = kwargs.pop('owner')
-    #     super(WriteUp, self).save(*args, **kwargs)
-    #     if not exists:
-    #         self.set_owner(owner)
+    def set_owner(self, owner, publication_user=None):
+        contributor = ContributorList.objects.create_contributor(owner, write_up=self, is_owner=True, share_XP=100,
+                                                                 share_money=100)
+        if publication_user:
+            self.create_write_up_profile(publication_user)
+        else:
+            self.create_write_up_profile(owner)
+        return contributor
 
-    def set_owner(self, owner):
-        return ContributorList.objects.create(contributer=owner, is_owner=True, level='E', write_up=self)
+    def create_write_up_profile(self, user):
+        return WriteupProfile.objects.create(write_up=self, created_by=user)
 
-    def add_contributor(self, contributor, level, share_XP, share_money):
-        return ContributorList.objects.create(contributer=contributor, permission_level=level, share_XP=share_XP,
-                                              share_money=share_money, write_up=self)
+    def add_contributor(self, contributor, share_XP, share_money):
+        return ContributorList.objects.create_contributor(contributor, write_up=self, share_XP=share_XP,
+                                                          share_money=share_money)
 
         # def remove_contributor(self, contributor):
         #     contributor_obj = ContributorList.objects.get()
 
-    def get_all_contributors(self): # FIXME: exclude removed contributors
+    def get_all_contributors(self):  # FIXME: exclude removed contributors
         return self.contributorlist_set.all()
 
 
@@ -155,6 +157,10 @@ class ContributorListManager(models.Manager):
 
     def get_contributor_for_writeup_with_perm(self, write_up_uuid, acc_perm_code):
         return self.get_queryset().permission(acc_perm_code).for_write_up(write_up_uuid)
+
+    def create_contributor(self, contributor, write_up, is_owner=False, share_XP=None, share_money=None):
+        return self.get_queryset().create(contributor=contributor, write_up=write_up, is_owner=is_owner,
+                                          share_XP=share_XP, share_money=share_money)
 
 
 # TODO: create celery task to validate and update per write_up engagement based XP/money for user
