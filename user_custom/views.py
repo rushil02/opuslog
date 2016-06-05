@@ -2,10 +2,10 @@ from django.contrib.auth import logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import SuspiciousOperation, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
-from django.http.response import HttpResponseRedirect, HttpResponse
+from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.views.generic import View
+from allauth.account.forms import LoginForm, SignupForm
 
 from admin_custom.custom_errors import PermissionDenied
 from admin_custom.decorators import has_content_perm
@@ -26,8 +26,8 @@ def check_user(request):
 
 
 class MainView(View):
-    login_form_class = AuthenticationForm
-    signup_form_class = UserCreationForm
+    login_form_class = LoginForm
+    signup_form_class = SignupForm
     template_name = 'user/main.html'
 
     def get(self, request, *args, **kwargs):
@@ -40,15 +40,6 @@ class MainView(View):
             'signup_form': signup_form,
         }
         return render(request, self.template_name, context)
-
-    def post(self, request, *args, **kwargs):
-        form = self.login_form_class(request.POST)
-        if form.is_valid():
-            # <process form cleaned data>
-            print "yellow"
-            return HttpResponseRedirect('/success/')
-
-        return render(request, self.template_name, {'form': form})
 
 
 class RegisteredUser(MainView):
