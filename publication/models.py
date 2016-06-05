@@ -1,10 +1,26 @@
 from __future__ import unicode_literals
 import uuid
+import time
+import os
 
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db.models import Q
 from django.db import models
 from django.conf import settings
+
+
+def get_logo_file_path(instance, filename):
+    path = 'PublicationEnvironment/Logo' + time.strftime('/%Y/%m/%d/')
+    ext = filename.split('.')[-1]
+    filename = "%s.%s" % (instance.publication.uuid, ext)
+    return os.path.join(path, filename)
+
+
+def get_background_file_path(instance, filename):
+    path = 'PublicationEnvironment/Background' + time.strftime('/%Y/%m/%d/')
+    ext = filename.split('.')[-1]
+    filename = "%s.%s" % (instance.publication.uuid, ext)
+    return os.path.join(path, filename)
 
 
 class PublicationManager(models.Manager):
@@ -96,6 +112,7 @@ class ContributorList(models.Model):
              )
     level = models.CharField(max_length=1, choices=LEVEL)
     permissions = models.ManyToManyField('essential.Permission', related_name='publication_permissions')
+    current = models.BooleanField(default=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
@@ -106,3 +123,14 @@ class ContributorList(models.Model):
 
     def __unicode__(self):
         return "'%s' of '%s'" % (self.contributor, self.publication)
+
+
+class PublicationEnvironment(models.Model):
+    publication = models.OneToOneField(Publication)
+    CHOICE = (('1', 'Theme 1 name'),
+              ('2', 'Theme 2 name'),
+              )
+    theme = models.CharField(max_length=1, choices=CHOICE)
+    logo = models.ImageField(upload_to=get_logo_file_path, null=True, blank=True)
+    background = models.ImageField(upload_to=get_background_file_path, null=True, blank=True)
+    update_time = models.DateTimeField(auto_now=True)

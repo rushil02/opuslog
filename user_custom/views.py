@@ -161,3 +161,7 @@ def edit_permission_view(request, write_up_uuid):  # FIXME: Change permission us
                 return render(request, template_name, context)
         else:
             return render(request, template_name, context)
+
+
+def alter_identity(request):
+    pass

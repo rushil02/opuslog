@@ -50,13 +50,7 @@ from django.conf import settings
 
 
 def get_file_path(instance, filename):
-    if instance.collection_type == 'B':
-        path = 'Covers/Book' + time.strftime('/%Y/%m/%d/')
-    elif instance.collection_type == 'M':
-        path = 'Covers/Magazine' + time.strftime('/%Y/%m/%d/')
-    else:
-        return False
-
+    path = 'Covers/' + instance.get_collection_type_display() + time.strftime('/%Y/%m/%d/')
     ext = filename.split('.')[-1]
     filename = "%s.%s" % (instance.uuid, ext)
     return os.path.join(path, filename)

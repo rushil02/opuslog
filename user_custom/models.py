@@ -29,13 +29,18 @@ class UserProfile(models.Model):
 
 class User(AbstractUser):
     """
-    This model replaces default Auth.User model tom implement all reverse
-    relations for generic foreign key. Subscribed relation will provide the
-    subscriptions made by specific user. Subscriptions relation will provide
-    users/publications that have subscribed to specific user. Related query
-    name is reverse relationship in query for their respective generic foreign
-    keys.
+    This model replaces default Auth.User model primarily to implement all
+    reverse relations for generic foreign key. Subscribed relation will
+    provide the subscriptions made by specific user. Subscriptions relation
+    will provide users/publications that have subscribed to specific user.
+    Related query name is reverse relationship in query for their respective
+    generic foreign keys.
+
+    publication_identity -> it stores the last chosen identity of
+    publication for the user. It should be null if the last identity was user.
     """
+
+    publication_identity = models.BooleanField(default=False)
 
     write_up_votes = GenericRelation('engagement.VoteWriteUp', related_query_name='user')
     write_up_comments = GenericRelation('engagement.Comment', related_query_name='user')

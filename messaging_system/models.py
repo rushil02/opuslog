@@ -9,7 +9,7 @@ from django.db import models
 class Thread(models.Model):
     """ Thread is created with group members. """
     subject = models.CharField(max_length=125)
-    created_by = models.ForeignKey(settings.AUTH_USER_FIELD)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL)
     create_time = models.DateTimeField(auto_now_add=True)
 
 
