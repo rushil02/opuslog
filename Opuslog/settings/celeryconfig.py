@@ -30,3 +30,4 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=2),
     },
 }
+# FIXME: get registered tasks

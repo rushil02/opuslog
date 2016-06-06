@@ -51,7 +51,7 @@ class User(AbstractUser):
     """
 
     publication_identity = models.BooleanField(default=False)
-    profile_image = models.ImageField(upload_to=get_file_path)
+    profile_image = models.ImageField(upload_to=get_file_path, null=True, blank=True)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     write_up_votes = GenericRelation('engagement.VoteWriteUp', related_query_name='user')

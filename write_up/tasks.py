@@ -17,4 +17,4 @@ def validate_locked_group_writing_event():
 
     GroupWritingLockHistory.objects.filter(
         Q(last_x_request__lt=target_time_x) | Q(last_y_request__lt=target_time_y), status='A'
-    ).update(article__lock=False, status='V')
+    ).update(status='V')  # FIXME: need to update article_lock
