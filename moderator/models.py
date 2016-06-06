@@ -22,7 +22,7 @@ class Privilege(models.Model):
              ('2', 'Level 2')
              )
     level = models.CharField(max_length=1, choices=LEVEL)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    create_time = models.DateTimeField(auto_now_add=True)
 
 
 class Moderator(models.Model):

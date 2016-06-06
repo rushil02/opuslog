@@ -26,7 +26,6 @@ class GroupWritingLockHistory(models.Model):
 
     article = models.ForeignKey('write_up.GroupWriting')
     lock_request_user = models.ForeignKey(settings.AUTH_USER_MODEL)
-    lock_start_time = models.DateTimeField()
     last_x_request = models.DateTimeField()
     last_y_request = models.DateTimeField()
     CHOICES = (('V', 'Void'),

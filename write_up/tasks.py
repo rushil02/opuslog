@@ -2,20 +2,19 @@ import datetime
 
 from django.db.models import Q
 
+from Opuslog.celery import app
 from log.models import GroupWritingLockHistory
 
 
+@app.task(name='validate_locked_group_writing_event', )
 def validate_locked_group_writing_event():
-    X_validation_timer = 5
-    Y_validation_timer = 20
+    x_validation_timer = 5
+    y_validation_timer = 20
 
     current_time = datetime.datetime.now()
-    target_time_x = current_time - datetime.timedelta(minutes=X_validation_timer)
-    target_time_y = current_time - datetime.timedelta(minutes=Y_validation_timer)
+    target_time_x = current_time - datetime.timedelta(minutes=x_validation_timer, seconds=30)
+    target_time_y = current_time - datetime.timedelta(minutes=y_validation_timer, seconds=30)
 
-    events = GroupWritingLockHistory.objects.filter(
+    GroupWritingLockHistory.objects.filter(
         Q(last_x_request__lt=target_time_x) | Q(last_y_request__lt=target_time_y), status='A'
-    ).select_related('article')
-
-    for event in events:
-        pass
+    ).update(article__lock=False, status='V')

@@ -124,7 +124,7 @@ class Tag(models.Model):
                 ('S', 'Secondary')
                 )
     tag_type = models.CharField(max_length=1)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    create_time = models.DateTimeField(auto_now_add=True)
 
 
 class Permission(models.Model):
@@ -144,7 +144,7 @@ class Permission(models.Model):
                 ('B', 'Both')
                 )
     permission_for = models.CharField(max_length=1, choices=FOR_TYPE)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    create_time = models.DateTimeField(auto_now_add=True)
 
 
 class Request(models.Model):
