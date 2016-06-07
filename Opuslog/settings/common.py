@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'tinymce',
     'rest_framework',
     'djcelery',
+    'captcha',
 
     'user_custom',
     'publication',
@@ -198,6 +199,11 @@ SOCIALACCOUNT_PROVIDERS = \
          {'SCOPE': ['profile', 'email'],
           'AUTH_PARAMS': {'access_type': 'online'}}
      }
+# Forms
+ACCOUNT_FORMS = {
+    'login': 'user_custom.forms.CustomLoginForm',
+    'signup': 'user_custom.forms.CustomSignupForm'
+}
 
 
 # used by django.contrib.site
@@ -249,3 +255,10 @@ CELERY_TRACK_STARTED = True
 CELERY_SEND_EVENTS = True
 CELERY_SEND_TASK_SENT_EVENT = True
 CELERY_DISABLE_RATE_LIMITS = True
+
+
+# django-recaptcha Settings
+# https://github.com/praekelt/django-recaptcha
+RECAPTCHA_PUBLIC_KEY = '6LcL-yETAAAAAJ_qq0TpWeCz4qo9mQGdGxR-6qBk'
+RECAPTCHA_PRIVATE_KEY = '6LcL-yETAAAAAJcWHEox7nwwTLoZ5Hq7Ody-EFM-'
+NOCAPTCHA = True

@@ -5,7 +5,7 @@
     <title></title>
 </head>
 <body>
-<form class="login" method="POST" action="{% url 'account_login' %}">
+<form class="login" method="POST" action="{% url 'user_custom:custom_login' %}">
     {% csrf_token %}
     {{ login_form.as_p }}
     <a class="button secondaryAction" href="{% url 'account_reset_password' %}">Forgot Password?</a>

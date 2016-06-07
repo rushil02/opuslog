@@ -1,14 +1,17 @@
+from allauth.account.views import LoginView, login
 from django.contrib.auth import logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import SuspiciousOperation, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_POST
 from django.views.generic import View
-from allauth.account.forms import LoginForm, SignupForm
 
 from admin_custom.custom_errors import PermissionDenied
 from admin_custom.decorators import has_content_perm
+from user_custom.forms import CustomLoginForm, CustomSignupForm
 from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
 
 
@@ -26,20 +29,34 @@ def check_user(request):
 
 
 class MainView(View):
-    login_form_class = LoginForm
-    signup_form_class = SignupForm
+    login_form_class = CustomLoginForm
+    signup_form_class = CustomSignupForm
     template_name = 'user/main.html'
 
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated():
             return check_user(request)
-        login_form = self.login_form_class()
+        login_form = self.login_form_class(captcha_flag=False)
         signup_form = self.signup_form_class()
         context = {
             'login_form': login_form,
             'signup_form': signup_form,
         }
         return render(request, self.template_name, context)
+
+
+@method_decorator(require_POST, name='dispatch')
+class CustomLoginView(LoginView):
+    def get_form_class(self):
+        return CustomLoginForm
+
+    def get_form_kwargs(self):
+        kwargs = super(CustomLoginView, self).get_form_kwargs()
+        kwargs.update({'captcha_flag': False})
+        return kwargs
+
+    def form_invalid(self, form):
+        return login(self.request, self.get_context_data(form=form))
 
 
 class RegisteredUser(MainView):
