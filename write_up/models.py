@@ -241,8 +241,8 @@ class CollectionUnit(models.Model):
                ('E', 'Explicit'))
     relationship = models.CharField(max_length=1, choices=CHOICES)
     sort_id = models.PositiveSmallIntegerField()
-    share_XP = models.DecimalField(max_length=5, decimal_places=5, null=True, blank=True)
-    share_money = models.DecimalField(max_length=5, decimal_places=5, null=True, blank=True)
+    share_XP = models.DecimalField(max_digits=5, decimal_places=5, null=True, blank=True)
+    share_money = models.DecimalField(max_digits=5, decimal_places=5, null=True, blank=True)
 
 
 class LiveWriting(models.Model):

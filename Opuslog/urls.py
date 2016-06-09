@@ -24,4 +24,5 @@ urlpatterns = [
     url(r'^', include('user_custom.urls', namespace='user_custom')),
     url(r'^tinymce/', include('tinymce.urls')),
     url(r'^es/', include('essential.urls', namespace='essential')),
+    url(r'^message/', include('messaging_system.urls', namespace='message')),
 ]

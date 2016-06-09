@@ -19,7 +19,6 @@ class Message(models.Model):
     thread = models.ForeignKey(Thread)
     body = models.TextField()
     sender = models.ForeignKey(settings.AUTH_USER_MODEL)
-    serial_num = models.PositiveIntegerField()
     sent_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
 
