@@ -28,4 +28,10 @@ class EditPermissionForm(forms.Form):
     username = forms.CharField(widget=forms.TextInput(attrs={'class': 'disabled', 'readonly': 'readonly'}))
 
 
+# class BookChapterForm(forms.ModelForm):
+#     class Meta:
+#         model = BookChapter
+#         fields = ['title']
+
+
 EditPermissionFormSet = formset_factory(EditPermissionForm)

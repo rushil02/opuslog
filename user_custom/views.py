@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import View
 
 from admin_custom.custom_errors import PermissionDenied
-from admin_custom.decorators import has_content_perm
+from admin_custom.decorators import has_write_up_perm
 from user_custom.forms import CustomLoginForm, CustomSignupForm
 from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
 
@@ -72,7 +72,6 @@ def user_acc(request):
 def create_writeup(request):
     user = request.user
     template_name = ""
-    success_redirect_url = ""
 
     form = WriteUpForm(request.POST or None)
 
@@ -84,6 +83,8 @@ def create_writeup(request):
         if form.is_valid():
             write_up = form.save()
             write_up.set_owner(user)
+            write_up.create_write_up_handler()
+            success_redirect_url = write_up.get_handler_redirect_url()
             return redirect(success_redirect_url)
         else:
             return render(request, template_name, context)
@@ -91,8 +92,35 @@ def create_writeup(request):
         return render(request, template_name, context)
 
 
+# @has_write_up_perm(acc_perm_code='CAN_EDIT', collection_type='B')
+# def create_chapter_view(request, *args, **kwargs):
+#     contributor = kwargs.get('contributor')
+#     write_up = contributor.write_up
+#     template_name = ""
+#     success_redirect_url = ""
+#
+#     form = BookChapterForm(request.POST or None)
+#     context = {
+#         "form": form
+#     }
+#
+#     if request.POST:
+#         if form.is_valid():
+#             book_chapter = form.save(commit=False)
+#             base_design = BaseDesign.objects.create()
+#             book_chapter.book = write_up
+#             book_chapter.chapter = base_design
+#             book_chapter.relationship = 'I'
+#             book_chapter.save()
+#             return redirect(success_redirect_url)
+#
+#     chapters = write_up.get_all_chapters()
+#     context.update({"chapters": chapters})
+#     return render(request, template_name, context)
+
+
 @login_required
-@has_content_perm(acc_perm_code='CAN_EDIT', perm_for='W')  # fixme: add perm code to permission table
+@has_write_up_perm(acc_perm_code='CAN_EDIT')  # fixme: add perm code to permission table
 def edit_write_up(request, *args, **kwargs):
     template_name = ""
     redirect_success_url = ""
