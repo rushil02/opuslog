@@ -5,17 +5,18 @@
     <title></title>
 </head>
 <body>
-<form action="/" method="post">
+<form class="login" method="POST" action="{% url 'user_custom:custom_login' %}">
     {% csrf_token %}
-    {{ login_form }}
-    <button type="submit">Login</button>
+    {{ login_form.as_p }}
+    <a class="button secondaryAction" href="{% url 'account_reset_password' %}">Forgot Password?</a>
+    <button class="primaryAction" type="submit">Sign In</button>
 </form>
 <br>
 
-<form action="/" method="post">
+<form class="signup" id="signup_form" method="post" action="{% url 'account_signup' %}">
     {% csrf_token %}
-    {{ signup_form }}
-    <button type="submit">Signup</button>
+    {{ signup_form.as_p }}
+    <button type="submit">Sign Up &raquo;</button>
 </form>
 </body>
 </html>

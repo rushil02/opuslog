@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'tinymce',
     'rest_framework',
     'djcelery',
+    'captcha',
 
     'user_custom',
     'publication',
@@ -156,7 +157,7 @@ STATICFILES_DIRS = (
 
 MEDIA_URL = '/media/'
 
-LOGIN_URL = '/login/'
+LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 
 
@@ -176,6 +177,42 @@ ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = LOGIN_REDIRECT_URL  # Re
 ACCOUNT_EMAIL_REQUIRED = True  # Email required for signing up
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "Opuslog.com - "
 ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 3600  # User is blocked for this time after failure to repeatedly log in
+
+# Social Account Providers setup  Docs - http://django-allauth.readthedocs.io/en/stable/providers.html
+SOCIALACCOUNT_PROVIDERS = \
+    {'facebook':
+         {'METHOD': 'oauth2',
+          'SCOPE': ['email', 'public_profile'],
+          'AUTH_PARAMS': {'auth_type': 'reauthenticate'},
+          'FIELDS': [
+              'id',
+              'email',
+              'name',
+              'first_name',
+              'last_name',
+              'verified',
+              'locale',
+              'timezone',
+              'link',
+              'gender',
+              'updated_time'],
+          'VERIFIED_EMAIL': False,
+          'VERSION': 'v2.4'},
+     'google':
+         {'SCOPE': ['profile', 'email'],
+          'AUTH_PARAMS': {'access_type': 'online'}}
+     }
+
+# Forms
+ACCOUNT_FORMS = {
+    'login': 'user_custom.forms.CustomLoginForm',
+    'signup': 'user_custom.forms.CustomSignupForm',
+    'change_password': 'user_custom.forms.CustomChangePasswordForm',
+    'set_password': 'user_custom.forms.CustomSetPasswordForm',
+    'add_email': 'user_custom.forms.CustomAddEmailForm',
+    'reset_password': 'user_custom.forms.CustomResetPasswordForm',
+    'reset_password_from_key': 'user_custom.forms.CustomResetPasswordKeyForm'
+}
 
 
 # used by django.contrib.site
@@ -206,3 +243,10 @@ TINYMCE_COMPRESSOR = True
 
 # Extended Auth user model
 AUTH_USER_MODEL = 'user_custom.User'
+
+
+# django-recaptcha Settings
+# https://github.com/praekelt/django-recaptcha
+RECAPTCHA_PUBLIC_KEY = '6LcL-yETAAAAAJ_qq0TpWeCz4qo9mQGdGxR-6qBk'
+RECAPTCHA_PRIVATE_KEY = '6LcL-yETAAAAAJcWHEox7nwwTLoZ5Hq7Ody-EFM-'
+NOCAPTCHA = True

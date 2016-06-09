@@ -19,3 +19,6 @@ REST_FRAMEWORK = {
     'DEFAULT_CONTENT_NEGOTIATION_CLASS': 'admin_custom.api_negotiation.IgnoreClientContentNegotiation',
     'PAGE_SIZE': 10
 }
+
+# Recaptcha SSL
+RECAPTCHA_USE_SSL = False

@@ -57,9 +57,6 @@ def get_file_path(instance, filename):
 
 
 class WriteUpManager(models.Manager):
-    def get_queryset(self):
-        return super(WriteUpManager, self).get_queryset()
-
     def create_writeup(self, title, collection_type, description, cover):
         return self.get_queryset().create(title=title, collection_type=collection_type, description=description,
                                           cover=cover)
@@ -90,7 +87,7 @@ class WriteUp(models.Model):
             ('G', 'GroupWriting'),
             )
     collection_type = models.CharField(max_length=1, choices=TYPE)
-    description = models.TextField()
+    description = models.TextField(null=True, blank=True)
     cover = models.ImageField(upload_to=get_file_path, null=True, blank=True)
     up_votes = models.PositiveIntegerField(default=0)
     down_votes = models.PositiveIntegerField(default=0)
@@ -108,25 +105,67 @@ class WriteUp(models.Model):
     def __unicode__(self):
         return self.title
 
-    # def save(self, *args, **kwargs):
-    #     exists = self.pk
-    #     owner = kwargs.pop('owner')
-    #     super(WriteUp, self).save(*args, **kwargs)
-    #     if not exists:
-    #         self.set_owner(owner)
+    def set_owner(self, owner, publication_user=None):
+        contributor = ContributorList.objects.create_contributor(owner, write_up=self, is_owner=True, share_XP=100,
+                                                                 share_money=100)
+        if publication_user:
+            self.create_write_up_profile(publication_user)
+        else:
+            self.create_write_up_profile(owner)
+        return contributor
 
-    def set_owner(self, owner):
-        return ContributorList.objects.create(contributer=owner, is_owner=True, level='E', write_up=self)
+    def create_write_up_profile(self, user):
+        return WriteupProfile.objects.create(write_up=self, created_by=user)
 
-    def add_contributor(self, contributor, level, share_XP, share_money):
-        return ContributorList.objects.create(contributer=contributor, permission_level=level, share_XP=share_XP,
-                                              share_money=share_money, write_up=self)
-
-        # def remove_contributor(self, contributor):
-        #     contributor_obj = ContributorList.objects.get()
+    def add_contributor(self, contributor, share_xp, share_money):
+        return ContributorList.objects.create_contributor(contributor, write_up=self, share_XP=share_xp,
+                                                          share_money=share_money)
 
     def get_all_contributors(self):  # FIXME: exclude removed contributors
         return self.contributorlist_set.all()
+
+    def create_write_up_handler(self):
+        method_name = 'create_' + self.collection_type.lower()
+        method = getattr(self, method_name)
+        method()
+
+    def get_handler_redirect_url(self):
+        """
+        Returns URL for creating specific type of write_up. for eg:
+        Book -> Url for displaying all chapters page
+        Magazine -> Url for displaying all articles page
+        Independent article -> Url for editing/displaying article
+        Similarly for group and live writing.
+        """
+
+        redirect_url = {
+            'B': '',
+            'M': '',
+            'I': '',
+            'L': '',
+            'G': '',
+        }
+        return redirect_url.get(self.collection_type)
+
+    def create_b(self):
+        pass
+
+    def create_m(self):
+        pass
+
+    def create_i(self):
+        base_design = BaseDesign.objects.create()
+        Article.objects.create(write_up=self, article_text=base_design)
+
+    def create_l(self):
+        base_design = BaseDesign.objects.create()
+        LiveWriting.objects.create(write_up=self, text=base_design)
+
+    def create_g(self):
+        GroupWriting.objects.create(write_up=self)
+
+    def get_all_chapters(self):
+        return self.bookchapter_set.all()
 
 
 class WriteupProfile(models.Model):
@@ -141,16 +180,24 @@ class ContributorListQuerySet(models.QuerySet):
     def permission(self, acc_perm_code):
         return self.filter(Q(permissions__code_name=acc_perm_code) | Q(is_owner=True))
 
-    def for_write_up(self, write_up_uuid):
-        return self.select_related('write_up').get(write_up__uuid=write_up_uuid)
+    def for_write_up(self, write_up_uuid, collection_type=None):
+        if collection_type:
+            return self.select_related('write_up').get(write_up__uuid=write_up_uuid,
+                                                       write_up__collection_type=collection_type)
+        else:
+            return self.select_related('write_up').get(write_up__uuid=write_up_uuid)
 
 
 class ContributorListManager(models.Manager):
     def get_queryset(self):
         return ContributorListQuerySet(self.model, using=self._db)
 
-    def get_contributor_for_writeup_with_perm(self, write_up_uuid, acc_perm_code):
-        return self.get_queryset().permission(acc_perm_code).for_write_up(write_up_uuid)
+    def get_contributor_for_writeup_with_perm(self, write_up_uuid, acc_perm_code, collection_type=None):
+        return self.get_queryset().permission(acc_perm_code).for_write_up(write_up_uuid, collection_type)
+
+    def create_contributor(self, contributor, write_up, is_owner=False, share_XP=None, share_money=None):
+        return self.get_queryset().create(contributor=contributor, write_up=write_up, is_owner=is_owner,
+                                          share_XP=share_XP, share_money=share_money)
 
 
 # TODO: create celery task to validate and update per write_up engagement based XP/money for user
@@ -178,7 +225,7 @@ class ContributorList(models.Model):
     share_XP = models.DecimalField(default=0, max_digits=8, decimal_places=5)
     share_money = models.DecimalField(default=0, max_digits=8, decimal_places=5)
     permissions = models.ManyToManyField('essential.Permission', related_name='writeup_permissions')
-    write_up = models.ForeignKey(WriteUp, null=True)
+    write_up = models.ForeignKey(WriteUp)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
@@ -199,7 +246,6 @@ class BaseDesign(models.Model):
     """
 
     text = models.TextField()
-    create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
     def save_with_rev(self, *args, **kwargs):

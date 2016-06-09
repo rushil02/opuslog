@@ -1,13 +1,17 @@
+from allauth.account.views import LoginView, login
 from django.contrib.auth import logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import SuspiciousOperation, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
-from django.http.response import HttpResponseRedirect, HttpResponse
+from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_POST
 from django.views.generic import View
 
 from admin_custom.custom_errors import PermissionDenied
+from admin_custom.decorators import has_write_up_perm
+from user_custom.forms import CustomLoginForm, CustomSignupForm
 from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
 
 
@@ -25,14 +29,14 @@ def check_user(request):
 
 
 class MainView(View):
-    login_form_class = AuthenticationForm
-    signup_form_class = UserCreationForm
+    login_form_class = CustomLoginForm
+    signup_form_class = CustomSignupForm
     template_name = 'user/main.html'
 
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated():
             return check_user(request)
-        login_form = self.login_form_class()
+        login_form = self.login_form_class(captcha_flag=False)
         signup_form = self.signup_form_class()
         context = {
             'login_form': login_form,
@@ -40,13 +44,19 @@ class MainView(View):
         }
         return render(request, self.template_name, context)
 
-    def post(self, request, *args, **kwargs):
-        form = self.login_form_class(request.POST)
-        if form.is_valid():
-            # <process form cleaned data>
-            return HttpResponseRedirect('/success/')
 
-        return render(request, self.template_name, {'form': form})
+@method_decorator(require_POST, name='dispatch')
+class CustomLoginView(LoginView):
+    def get_form_class(self):
+        return CustomLoginForm
+
+    def get_form_kwargs(self):
+        kwargs = super(CustomLoginView, self).get_form_kwargs()
+        kwargs.update({'captcha_flag': False})
+        return kwargs
+
+    def form_invalid(self, form):
+        return login(self.request, self.get_context_data(form=form))
 
 
 class RegisteredUser(MainView):
@@ -59,20 +69,11 @@ def user_acc(request):
 
 
 @login_required
-def create_edit_writeup(request, writeup_uuid=None):
+def create_writeup(request):
     user = request.user
     template_name = ""
-    success_redirect_url = ""
 
-    if writeup_uuid:
-        try:
-            write_up = user.get_user_writeup_with_permission(writeup_uuid, 'E')
-        except PermissionDenied:
-            raise SuspiciousOperation()
-        else:
-            form = WriteUpForm(request.POST or None, instance=write_up)
-    else:
-        form = WriteUpForm(request.POST or None)
+    form = WriteUpForm(request.POST or None)
 
     context = {
         "form": form
@@ -80,13 +81,67 @@ def create_edit_writeup(request, writeup_uuid=None):
 
     if request.POST:
         if form.is_valid():
-            write_up = form.save(commit=False)
-            write_up.save(owner=user)
+            write_up = form.save()
+            write_up.set_owner(user)
+            write_up.create_write_up_handler()
+            success_redirect_url = write_up.get_handler_redirect_url()
             return redirect(success_redirect_url)
         else:
             return render(request, template_name, context)
     else:
         return render(request, template_name, context)
+
+
+# @has_write_up_perm(acc_perm_code='CAN_EDIT', collection_type='B')
+# def create_chapter_view(request, *args, **kwargs):
+#     contributor = kwargs.get('contributor')
+#     write_up = contributor.write_up
+#     template_name = ""
+#     success_redirect_url = ""
+#
+#     form = BookChapterForm(request.POST or None)
+#     context = {
+#         "form": form
+#     }
+#
+#     if request.POST:
+#         if form.is_valid():
+#             book_chapter = form.save(commit=False)
+#             base_design = BaseDesign.objects.create()
+#             book_chapter.book = write_up
+#             book_chapter.chapter = base_design
+#             book_chapter.relationship = 'I'
+#             book_chapter.save()
+#             return redirect(success_redirect_url)
+#
+#     chapters = write_up.get_all_chapters()
+#     context.update({"chapters": chapters})
+#     return render(request, template_name, context)
+
+
+@login_required
+@has_write_up_perm(acc_perm_code='CAN_EDIT')  # fixme: add perm code to permission table
+def edit_write_up(request, *args, **kwargs):
+    template_name = ""
+    redirect_success_url = ""
+    contributor = kwargs.get('contributor')
+    try:
+        write_up = contributor.write_up
+    except ObjectDoesNotExist:
+        raise SuspiciousOperation()
+    else:
+        form = WriteUpForm(request.POST or None, instance=write_up)
+        context = {
+            "form": form
+        }
+        if request.POST:
+            if form.is_valid():
+                form.save()
+                return redirect(redirect_success_url)
+            else:
+                return render(request, template_name, context)
+        else:
+            return render(request, template_name, context)
 
 
 @login_required
