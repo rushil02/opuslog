@@ -198,7 +198,6 @@ class BaseDesign(models.Model):
     For revisions - Save using method 'save_with_rev'
     """
 
-    title = models.CharField(max_length=250, null=True, blank=True)
     text = models.TextField()
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
@@ -212,43 +211,38 @@ class BaseDesign(models.Model):
         return str(self.id)
 
 
-class Article(models.Model):
-    """ An article can be related directly to a writeup or via a magazine. """
+class Unit(models.Model):
+    """ A chapter/article can be related directly to a writeup or via a book/magazine. """
+
     write_up = models.OneToOneField(WriteUp, null=True)
     article_text = models.OneToOneField(BaseDesign)
+    title = models.CharField(max_length=250, null=True, blank=True)
 
 
-class MagazineArticle(models.Model):
+class UnitContributor(models.Model):
+    """ Holds the creators for each Chapter/Article in a write up. """
+
+    article = models.ForeignKey(Unit)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL)
+    publication = models.ForeignKey('publication.Publication', null=True)
+
+
+class CollectionUnit(models.Model):
     """
     It is the intermediary table for Write up type 'Magazine' and its units
     'article'. A Magazine can have multiple articles. An article's primary
     can be another writeup from which the same is imported, else it can be
     implicit to the Magazine.
     """
+
     magazine = models.ForeignKey(WriteUp)
-    article = models.ForeignKey(Article)
+    article = models.ForeignKey(Unit)
     CHOICES = (('I', 'Implicit'),
                ('E', 'Explicit'))
     relationship = models.CharField(max_length=1, choices=CHOICES)
     sort_id = models.PositiveSmallIntegerField()
-
-
-class BookChapter(models.Model):
-    """
-    Intermediary table for relation between Write up type 'Book' and
-    chapter (Base Design). A Book can have multiple chapters. A chapter's
-    primary can be another writeup from which the same is imported, else it
-    can be implicit to the Magazine.
-    """
-    book = models.ForeignKey(WriteUp)
-    chapter = models.ForeignKey(BaseDesign)
-    CHOICES = (('I', 'Implicit'),
-               ('E', 'Explicit'))
-    relationship = models.CharField(max_length=1, choices=CHOICES)
-    sort_id = models.PositiveSmallIntegerField()
-
-    def __unicode__(self):
-        return self.write_up
+    share_XP = models.DecimalField(max_length=5, decimal_places=5, null=True, blank=True)
+    share_money = models.DecimalField(max_length=5, decimal_places=5, null=True, blank=True)
 
 
 class LiveWriting(models.Model):
@@ -269,7 +263,7 @@ class LiveWriting(models.Model):
         return self.write_up
 
 
-class GroupWriting(models.Model):  # TODO: Celery task to unlock objects, calculate X & Y min max
+class GroupWriting(models.Model):
     """
     For Group writing events. Only for users and not Publications.
     Sequentially users can add on to a story/article.
