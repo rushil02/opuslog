@@ -1,15 +1,16 @@
 from django import forms
 from django.forms.formsets import formset_factory
 
-from write_up.models import WriteUp
+from write_up.models import WriteUp, BaseDesign
 
 
-class WriteUpForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        if not kwargs.get('initial'):
-            self.Meta.fields.append('collection_type')
-        super(WriteUpForm, self).__init__(*args, **kwargs)
+class CreateWriteUpForm(forms.ModelForm):
+    class Meta:
+        model = WriteUp
+        fields = ['title', 'description', 'cover', 'collection_type']
 
+
+class EditWriteUpForm(forms.ModelForm):
     class Meta:
         model = WriteUp
         fields = ['title', 'description', 'cover']
@@ -32,6 +33,19 @@ class EditPermissionForm(forms.Form):
 #     class Meta:
 #         model = BookChapter
 #         fields = ['title']
+
+
+class IndependentArticleForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        write_up = kwargs.pop('write_up')
+        super(IndependentArticleForm, self).__init__(*args, **kwargs)
+        self.fields['title'].initial = write_up.title
+
+    title = forms.CharField(max_length=250)
+
+    class Meta:
+        model = BaseDesign
+        fields = ['text']
 
 
 EditPermissionFormSet = formset_factory(EditPermissionForm)

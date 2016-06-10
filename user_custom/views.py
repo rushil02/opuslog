@@ -12,7 +12,8 @@ from django.views.generic import View
 from admin_custom.custom_errors import PermissionDenied
 from admin_custom.decorators import has_write_up_perm
 from user_custom.forms import CustomLoginForm, CustomSignupForm
-from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
+from write_up.forms import AddContributorForm, EditPermissionFormSet, IndependentArticleForm, EditWriteUpForm
+from write_up.views import CreateWriteUpView
 
 
 def check_user(request):
@@ -68,12 +69,16 @@ def user_acc(request):
     return HttpResponse("Logged In")
 
 
-@login_required
-def create_writeup(request):
-    user = request.user
-    template_name = ""
+@has_write_up_perm('CAN_EDIT', collection_type='I')
+def edit_independent_article(request, *args, **kwargs):
+    contributor = kwargs.get('contributor')
+    write_up = contributor.write_up
+    article_unit = write_up.unit
+    article_base_design = article_unit.text
+    success_redirect_url = ""
+    template_name = "write_up/form_template.html"
 
-    form = WriteUpForm(request.POST or None)
+    form = IndependentArticleForm(request.POST or None, instance=article_base_design, write_up=write_up)
 
     context = {
         "form": form
@@ -81,15 +86,12 @@ def create_writeup(request):
 
     if request.POST:
         if form.is_valid():
-            write_up = form.save()
-            write_up.set_owner(user)
-            write_up.create_write_up_handler()
-            success_redirect_url = write_up.get_handler_redirect_url()
+            if form.cleaned_data['title'] != write_up.title:
+                write_up.title = form.cleaned_data['title']
+                write_up.save()
+            form.save()
             return redirect(success_redirect_url)
-        else:
-            return render(request, template_name, context)
-    else:
-        return render(request, template_name, context)
+    return render(request, template_name, context)
 
 
 # @has_write_up_perm(acc_perm_code='CAN_EDIT', collection_type='B')
@@ -130,7 +132,7 @@ def edit_write_up(request, *args, **kwargs):
     except ObjectDoesNotExist:
         raise SuspiciousOperation()
     else:
-        form = WriteUpForm(request.POST or None, instance=write_up)
+        form = EditWriteUpForm(request.POST or None, instance=write_up)
         context = {
             "form": form
         }
@@ -220,3 +222,15 @@ def edit_permission_view(request, write_up_uuid):  # FIXME: Change permission us
 
 def alter_identity(request):  # TODO
     pass
+
+
+@method_decorator(login_required, name='dispatch')
+class CreateUserWriteUpView(CreateWriteUpView):
+    def get_success_url(self):
+        return super(CreateUserWriteUpView, self).get_success_url()
+
+    def get_user(self):
+        return self.request.user
+
+    def get_publication_user(self):
+        return None

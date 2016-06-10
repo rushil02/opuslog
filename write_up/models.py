@@ -124,10 +124,10 @@ class WriteUp(models.Model):
     def get_all_contributors(self):  # FIXME: exclude removed contributors
         return self.contributorlist_set.all()
 
-    def create_write_up_handler(self):
+    def create_write_up_handler(self, user):
         method_name = 'create_' + self.collection_type.lower()
         method = getattr(self, method_name)
-        method()
+        method(user)
 
     def get_handler_redirect_url(self):
         """
@@ -141,27 +141,28 @@ class WriteUp(models.Model):
         redirect_url = {
             'B': '',
             'M': '',
-            'I': '',
+            'I': '/edit_article/',
             'L': '',
             'G': '',
         }
         return redirect_url.get(self.collection_type)
 
-    def create_b(self):
+    def create_b(self, user):
         pass
 
-    def create_m(self):
+    def create_m(self, user):
         pass
 
-    def create_i(self):
+    def create_i(self, user):
         base_design = BaseDesign.objects.create()
-        Article.objects.create(write_up=self, article_text=base_design)
+        unit = Unit.objects.create(write_up=self, text=base_design)
+        unit.add_unit_contributor(user)
 
-    def create_l(self):
+    def create_l(self, user):
         base_design = BaseDesign.objects.create()
         LiveWriting.objects.create(write_up=self, text=base_design)
 
-    def create_g(self):
+    def create_g(self, user):
         GroupWriting.objects.create(write_up=self)
 
     def get_all_chapters(self):
@@ -261,8 +262,11 @@ class Unit(models.Model):
     """ A chapter/article can be related directly to a writeup or via a book/magazine. """
 
     write_up = models.OneToOneField(WriteUp, null=True)
-    article_text = models.OneToOneField(BaseDesign)
+    text = models.OneToOneField(BaseDesign)
     title = models.CharField(max_length=250, null=True, blank=True)
+
+    def add_unit_contributor(self, user, publication=None):
+        return self.unitcontributor_set.create(user=user, publication=publication)
 
 
 class UnitContributor(models.Model):
