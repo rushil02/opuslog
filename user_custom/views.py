@@ -12,8 +12,8 @@ from django.views.generic import View
 from admin_custom.custom_errors import PermissionDenied
 from admin_custom.decorators import has_write_up_perm
 from user_custom.forms import CustomLoginForm, CustomSignupForm
-from write_up.forms import AddContributorForm, EditPermissionFormSet, IndependentArticleForm, EditWriteUpForm
-from write_up.views import CreateWriteUpView
+from write_up.forms import AddContributorForm, EditPermissionFormSet, IndependentArticleForm
+from write_up.views import CreateWriteUpView, EditWriteUpView
 
 
 def check_user(request):
@@ -122,31 +122,6 @@ def edit_independent_article(request, *args, **kwargs):
 
 
 @login_required
-@has_write_up_perm(acc_perm_code='CAN_EDIT')  # fixme: add perm code to permission table
-def edit_write_up(request, *args, **kwargs):
-    template_name = ""
-    redirect_success_url = ""
-    contributor = kwargs.get('contributor')
-    try:
-        write_up = contributor.write_up
-    except ObjectDoesNotExist:
-        raise SuspiciousOperation()
-    else:
-        form = EditWriteUpForm(request.POST or None, instance=write_up)
-        context = {
-            "form": form
-        }
-        if request.POST:
-            if form.is_valid():
-                form.save()
-                return redirect(redirect_success_url)
-            else:
-                return render(request, template_name, context)
-        else:
-            return render(request, template_name, context)
-
-
-@login_required
 def add_write_up_contributor(request, write_up_uuid):
     user = request.user
     form = AddContributorForm(request.POST or None)
@@ -224,13 +199,21 @@ def alter_identity(request):  # TODO
     pass
 
 
-@method_decorator(login_required, name='dispatch')
-class CreateUserWriteUpView(CreateWriteUpView):
-    def get_success_url(self):
-        return super(CreateUserWriteUpView, self).get_success_url()
-
+class UserViewMixin(object):
     def get_user(self):
         return self.request.user
 
     def get_publication_user(self):
         return None
+
+    def get_success_url_prefix(self):
+        return ""
+
+
+@method_decorator(login_required, name='dispatch')
+class CreateUserWriteUpView(UserViewMixin, CreateWriteUpView):
+    pass
+
+
+class EditUserWriteUpView(UserViewMixin, EditWriteUpView):
+    pass
