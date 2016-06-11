@@ -38,6 +38,10 @@ class Publication(models.Model):
     """
 
     name = models.CharField(max_length=150)
+    handler = models.CharField(
+        max_length=30,
+        unique=True,
+        help_text='Required. 30 characters or fewer. Letters, digits and @/./+/-/_ only.')
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     XP = models.BigIntegerField(default=0)
     money = models.BigIntegerField(default=0)

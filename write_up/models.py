@@ -155,7 +155,7 @@ class WriteUp(models.Model):
 
     def create_i(self):
         base_design = BaseDesign.objects.create()
-        Article.objects.create(write_up=self, article_text=base_design)
+        Unit.objects.create(write_up=self, text=base_design)
 
     def create_l(self):
         base_design = BaseDesign.objects.create()
@@ -261,7 +261,7 @@ class Unit(models.Model):
     """ A chapter/article can be related directly to a writeup or via a book/magazine. """
 
     write_up = models.OneToOneField(WriteUp, null=True)
-    article_text = models.OneToOneField(BaseDesign)
+    text = models.OneToOneField(BaseDesign)
     title = models.CharField(max_length=250, null=True, blank=True)
 
 

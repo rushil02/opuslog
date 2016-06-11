@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from publication.models import *
+from publication.models import Publication, ContributorList
 
 
 class PublicationAdmin(admin.ModelAdmin):
@@ -8,3 +8,4 @@ class PublicationAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Publication, PublicationAdmin)
+admin.site.register(ContributorList)

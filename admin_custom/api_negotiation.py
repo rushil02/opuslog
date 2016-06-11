@@ -9,6 +9,7 @@ from rest_framework.settings import api_settings
 from rest_framework.utils.mediatypes import media_type_matches
 from django.http import Http404
 from rest_framework import exceptions
+from django.conf import settings
 
 
 class IgnoreClientContentNegotiation(BaseContentNegotiation):
@@ -29,14 +30,15 @@ class IgnoreClientContentNegotiation(BaseContentNegotiation):
         Select the first renderer in the `.renderer_classes` list.
         """
         # Allow URL style format override.  eg. "?format=json
-        format_query_param = self.settings.URL_FORMAT_OVERRIDE
-        format = format_suffix or request.query_params.get(format_query_param)
-        if format:
-            renderers = self.filter_renderers(renderers, format)
-            for renderer in renderers:
-                if type(renderer) in self.settings.DEFAULT_RENDERER_CLASSES:
-                    return renderer, renderer.media_type
-            raise exceptions.NotAcceptable(available_renderers=renderers)
+        if settings.DEBUG:
+            format_query_param = self.settings.URL_FORMAT_OVERRIDE
+            format = format_suffix or request.query_params.get(format_query_param)
+            if format:
+                renderers = self.filter_renderers(renderers, format)
+                for renderer in renderers:
+                    if type(renderer) in self.settings.DEFAULT_RENDERER_CLASSES:
+                        return renderer, renderer.media_type
+                raise exceptions.NotAcceptable(available_renderers=renderers)
 
         return renderers[0], renderers[0].media_type
 
