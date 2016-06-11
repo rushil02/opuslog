@@ -225,16 +225,20 @@ def alter_identity(request):  # TODO
 
 
 class UserThreads(ThreadView):
+    """ Implements ThreadView for User entity. """
+
     def get_queryset(self):
-        return Thread.objects.filter(threadmembers__user=self.request.user)
+        return Thread.objects.filter(threadmembers__user=self.request.user).select_related('created_by')
 
     def get_entity(self):
         return self.request.user
 
 
 class AddDeleteMemberToThread(AddDeleteMemberView):
+    """ Implements AddDeleteMemberView for User entity. """
     pass
 
 
 class MessageOfThread(MessageView):
+    """ Implements MessageView for User entity. """
     pass

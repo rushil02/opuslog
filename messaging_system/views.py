@@ -49,7 +49,7 @@ class AddDeleteMemberView(GenericAPIView):
     serializer_class = AddMemberSerializer
 
     def get_queryset(self):
-        return ThreadMembers.objects.filter(thread=self.get_object())
+        return ThreadMembers.objects.all()
 
     def get_object(self):
         thread_id = self.kwargs.get('thread_id', None)

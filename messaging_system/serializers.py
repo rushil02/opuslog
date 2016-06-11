@@ -4,13 +4,19 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import SerializerMethodField
 
-from admin_custom.fields import UserPublicationUnicodeField
+from admin_custom.fields import UserPublicationSerializedField
 from messaging_system.models import Thread, ThreadMembers, Message
 from publication.models import Publication
+from publication.serializers import PublicationMembersSerializer
+from user_custom.serializers import UserMemberSerializer
 
 
 class ThreadMembersSerializer(serializers.ModelSerializer):
-    member = UserPublicationUnicodeField(source='entity', read_only=True)
+    """ Serializes ThreadMembers model """
+
+    member = UserPublicationSerializedField(source='entity', read_only=True,
+                                            user_serializer=UserMemberSerializer,
+                                            publication_serializer=PublicationMembersSerializer)
     content_type = serializers.StringRelatedField(read_only=True)
 
     class Meta:
@@ -19,6 +25,8 @@ class ThreadMembersSerializer(serializers.ModelSerializer):
 
 
 class AddMemberSerializer(serializers.Serializer):
+    """ Custom Serializer to add/delete members """
+
     entity_handler = serializers.CharField(max_length=30)
     obj = None
 
@@ -39,11 +47,13 @@ class AddMemberSerializer(serializers.Serializer):
 
 
 class ThreadSerializer(serializers.ModelSerializer):
+    """ Serializes Thread model """
+
     members = SerializerMethodField()
     created_by = serializers.StringRelatedField(read_only=True)
 
     def get_members(self, thread):
-        members_queryset = thread.threadmembers_set.all()
+        members_queryset = thread.threadmembers_set.all().prefetch_related('entity')
         serializer = ThreadMembersSerializer(instance=members_queryset, many=True)
         return serializer.data
 
@@ -53,6 +63,7 @@ class ThreadSerializer(serializers.ModelSerializer):
 
 
 class MessageSerializer(serializers.ModelSerializer):
+    """ Serializes Message model """
 
     class Meta:
         model = Message

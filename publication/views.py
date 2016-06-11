@@ -1,17 +1,14 @@
 from django.core.exceptions import SuspiciousOperation
+from django.shortcuts import get_object_or_404
 
 from messaging_system.models import Thread
-from messaging_system.views import ThreadView
+from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 from publication.models import Publication
 
 
-class FetchPublication(object):  # Seems i wont be using it, makes 2 extra queries acc. to DjDT
-
-    def get_publication(self):
-        return Publication.objects.get(contributorlist__contributor=self.request.user, contributorlist__current=True)
-
-
 class PublicationThreads(ThreadView):
+    """ Implements ThreadView for Publication entity. """
+
     def get_queryset(self):
         try:
             return Thread.objects.filter(threadmembers__publication__contributorlist__contributor=self.request.user,
@@ -19,5 +16,16 @@ class PublicationThreads(ThreadView):
         except Exception as e:
             raise SuspiciousOperation(e.message)
 
-    def get_entity(self):  # FIXME: how the fuck is this supposed to happen?
-        return self.request.user.contributed_publications.filter(current=True).publication.get()
+    def get_entity(self):
+        return get_object_or_404(Publication, contributorlist__contributor=self.request.user,
+                                 contributorlist__current=True)
+
+
+class AddDeleteMemberToThread(AddDeleteMemberView):
+    """ Implements AddDeleteMemberView for Publication entity. """
+    pass
+
+
+class MessageOfThread(MessageView):
+    """ Implements MessageView for Publication entity. """
+    pass
