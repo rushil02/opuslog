@@ -8,9 +8,13 @@ from django.db import models
 
 class Thread(models.Model):
     """ Thread is created with group members. """
+
     subject = models.CharField(max_length=125)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL)
     create_time = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return self.subject
 
 
 class Message(models.Model):
@@ -21,6 +25,9 @@ class Message(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL)
     sent_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
+
+    def __unicode__(self):
+        return self.thread
 
 
 class ThreadMembers(models.Model):
@@ -35,8 +42,12 @@ class ThreadMembers(models.Model):
     )
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
     object_id = models.PositiveIntegerField()
+    removed = models.BooleanField(default=False)
     entity = GenericForeignKey('content_type', 'object_id')
     create_time = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return self.entity.__unicode__()
 
     class Meta:
         unique_together = ('content_type', 'thread', 'object_id')

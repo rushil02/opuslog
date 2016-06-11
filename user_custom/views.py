@@ -11,6 +11,8 @@ from django.views.generic import View
 
 from admin_custom.custom_errors import PermissionDenied
 from admin_custom.decorators import has_write_up_perm
+from messaging_system.models import Thread
+from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 from user_custom.forms import CustomLoginForm, CustomSignupForm
 from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
 
@@ -219,4 +221,20 @@ def edit_permission_view(request, write_up_uuid):  # FIXME: Change permission us
 
 
 def alter_identity(request):  # TODO
+    pass
+
+
+class UserThreads(ThreadView):
+    def get_queryset(self):
+        return Thread.objects.filter(threadmembers__user=self.request.user)
+
+    def get_entity(self):
+        return self.request.user
+
+
+class AddDeleteMemberToThread(AddDeleteMemberView):
+    pass
+
+
+class MessageOfThread(MessageView):
     pass
