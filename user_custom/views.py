@@ -242,3 +242,8 @@ class AddDeleteMemberToThread(AddDeleteMemberView):
 class MessageOfThread(MessageView):
     """ Implements MessageView for User entity. """
     pass
+
+
+def user_page(request):
+    # TODO: redirect to this page when requested for a creator's detail page
+    return HttpResponse("You reached on some other users page")

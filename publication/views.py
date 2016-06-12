@@ -1,4 +1,5 @@
 from django.core.exceptions import SuspiciousOperation
+from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
 from messaging_system.models import Thread
@@ -29,3 +30,8 @@ class AddDeleteMemberToThread(AddDeleteMemberView):
 class MessageOfThread(MessageView):
     """ Implements MessageView for Publication entity. """
     pass
+
+
+def publication_page(request):
+    # TODO: redirect to this page when requested for a publication's detail page
+    return HttpResponse("You reached on some other publication's home page")

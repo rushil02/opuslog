@@ -1,8 +1,9 @@
 from django.conf.urls import url
 
-from publication.views import PublicationThreads, AddDeleteMemberToThread, MessageOfThread
+from publication.views import PublicationThreads, AddDeleteMemberToThread, MessageOfThread, publication_page
 
 urlpatterns = [
+    url(r'^(?P<publication_id>[^/]+)/$', publication_page, name='publication'),
     url(r'^threads/$', PublicationThreads.as_view(), name='all_threads'),
     url(r'^threads/(?P<thread_id>[^/]+)/$', PublicationThreads.as_view(), name='update_thread'),
     url(r'^threads/members/(?P<thread_id>[^/]+)/$', AddDeleteMemberToThread.as_view(), name='add_members'),

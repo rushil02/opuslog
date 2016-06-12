@@ -49,7 +49,7 @@ class AddMemberSerializer(serializers.Serializer):
 class ThreadSerializer(serializers.ModelSerializer):
     """ Serializes Thread model """
 
-    members = SerializerMethodField()
+    members = SerializerMethodField(read_only=True)
     created_by = serializers.StringRelatedField(read_only=True)
 
     def get_members(self, thread):

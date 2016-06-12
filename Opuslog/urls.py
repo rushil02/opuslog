@@ -25,5 +25,5 @@ urlpatterns = [
     url(r'^pub/', include('publication.urls', namespace='publication')),
     url(r'^tinymce/', include('tinymce.urls')),
     url(r'^es/', include('essential.urls', namespace='essential')),
-    # url(r'^message/', include('messaging_system.urls', namespace='message')),  # TODO:remove
+    url(r'^test/', include('engagement.urls')),  # TODO:remove
 ]

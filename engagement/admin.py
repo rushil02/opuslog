@@ -4,7 +4,7 @@ from engagement.models import VoteWriteUp, Comment, VoteComment, Subscriber
 
 
 class EngagementAdmin(admin.ModelAdmin):
-    list_display = ('content_type', 'object_id', 'actor', 'timestamp')
+    list_display = ('publication_user', 'content_type', 'object_id', 'actor', 'timestamp')
 
     def get_readonly_fields(self, request, obj=None):
         if request.user.is_superuser:
@@ -20,7 +20,7 @@ class EngagementAdmin(admin.ModelAdmin):
             self.list_display_links = None
         return self.list_display_links
 
-    list_filter = ('content_type', 'actor')
+    list_filter = ('content_type',)
     date_hierarchy = 'timestamp'
 
 

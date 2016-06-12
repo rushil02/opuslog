@@ -54,7 +54,7 @@ class Comment(Engagement):
     comment_text = models.TextField(blank=False, null=False)
     up_votes = models.PositiveIntegerField(default=0)
     down_votes = models.PositiveIntegerField(default=0)
-    reply_to = models.ForeignKey("self", null=True)
+    reply_to = models.ForeignKey("self", null=True, blank=True)
     delete_request = models.BooleanField(default=False)
 
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='comment')
