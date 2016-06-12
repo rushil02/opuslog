@@ -11,9 +11,11 @@ class PublicationSerializer(serializers.ModelSerializer):  # TODO: restrict fiel
         fields = '__all__'
 
 
-class PublicationMembersSerializer(serializers.ModelSerializer):
+class PublicationSerializerTwo(serializers.ModelSerializer):
     """ Used for getting publication details - name, handler, logo """
+
+    url = serializers.CharField(source='get_handler_url', read_only=True)
 
     class Meta:
         model = Publication
-        fields = ('name', 'handler', 'logo')
+        fields = ('name', 'handler', 'logo', 'url')

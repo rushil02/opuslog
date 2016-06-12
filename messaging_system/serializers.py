@@ -7,21 +7,21 @@ from rest_framework.fields import SerializerMethodField
 from admin_custom.fields import UserPublicationSerializedField
 from messaging_system.models import Thread, ThreadMembers, Message
 from publication.models import Publication
-from publication.serializers import PublicationMembersSerializer
-from user_custom.serializers import UserMemberSerializer
+from publication.serializers import PublicationSerializerTwo
+from user_custom.serializers import UserSerializerTwo
 
 
 class ThreadMembersSerializer(serializers.ModelSerializer):
     """ Serializes ThreadMembers model """
 
     member = UserPublicationSerializedField(source='entity', read_only=True,
-                                            user_serializer=UserMemberSerializer,
-                                            publication_serializer=PublicationMembersSerializer)
+                                            user_serializer=UserSerializerTwo,
+                                            publication_serializer=PublicationSerializerTwo)
     content_type = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = ThreadMembers
-        fields = ('member', 'content_type')
+        fields = ('content_type', 'member')
 
 
 class AddMemberSerializer(serializers.Serializer):

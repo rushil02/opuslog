@@ -244,6 +244,6 @@ class MessageOfThread(MessageView):
     pass
 
 
-def user_page(request):
+def user_page(request, user_handler):
     # TODO: redirect to this page when requested for a creator's detail page
-    return HttpResponse("You reached on some other users page")
+    return HttpResponse("You reached on some other users page {%s}" % user_handler)

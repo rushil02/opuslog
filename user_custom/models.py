@@ -5,6 +5,7 @@ import uuid
 
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.urlresolvers import reverse
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from cities_light.models import Region, Country, City
@@ -82,3 +83,7 @@ class User(AbstractUser):
             raise PermissionDenied
         else:
             return writeup_contributor.write_up
+
+    def get_handler_url(self):
+        return reverse('user_custom:user_details', kwargs={'user_handler': self.username})
+

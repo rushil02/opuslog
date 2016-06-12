@@ -19,7 +19,7 @@ class UserPublicationUnicodeField(serializers.RelatedField):
 
 class UserPublicationSerializedField(serializers.RelatedField):
     """
-    Used with Nested fields in GFK for USer/Publication, returns object
+    Used with Nested fields in GFK for User/Publication, returns object
     Takes publication_serializer and user_serializer as arguments to set
     Nested Serializer
     """
@@ -27,11 +27,11 @@ class UserPublicationSerializedField(serializers.RelatedField):
     publication_serializer = None
     user_serializer = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         self.publication_serializer = kwargs.pop('publication_serializer', PublicationSerializer)
         self.user_serializer = kwargs.pop('user_serializer', UserSerializer)
 
-        super(UserPublicationSerializedField, self).__init__(*args, **kwargs)
+        super(UserPublicationSerializedField, self).__init__(**kwargs)
 
     def to_representation(self, value):
         if isinstance(value, Publication):

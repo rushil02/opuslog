@@ -4,6 +4,7 @@ import time
 import os
 
 from django.contrib.contenttypes.fields import GenericRelation
+from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.db import models
 from django.conf import settings
@@ -79,6 +80,9 @@ class Publication(models.Model):
 
     def set_administrator(self, user):
         return ContributorList.objects.create(contributer=user, publication=self, level='A')
+    
+    def get_handler_url(self):
+        return reverse('publication:publication_details', kwargs={'publication_handler': self.handler})
 
 
 class ContributorListQuerySet(models.QuerySet):

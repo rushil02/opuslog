@@ -32,6 +32,6 @@ class MessageOfThread(MessageView):
     pass
 
 
-def publication_page(request):
+def publication_page(request, publication_handler):
     # TODO: redirect to this page when requested for a publication's detail page
-    return HttpResponse("You reached on some other publication's home page")
+    return HttpResponse("You reached on some other publication's {%s} home page" % publication_handler)
