@@ -1,16 +1,16 @@
 from rest_framework import serializers
 
-from admin_custom.fields import UserPublicationUnicodeField
+from admin_custom.fields import UserPublicationSerializedField
 from engagement.models import Comment
+from publication.serializers import PublicationSerializerTwo
+from user_custom.serializers import UserSerializerTwo
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    member = UserPublicationUnicodeField(source='actor', read_only=True)
-    # url = serializers.HyperlinkedIdentityField(
-    #     view_name='user_custom:user',
-    #     lookup_field='write_up'
-    # )
+    member = UserPublicationSerializedField(source='actor', read_only=True,
+                                            user_serializer=UserSerializerTwo,
+                                            publication_serializer=PublicationSerializerTwo)
 
     class Meta:
         model = Comment
-        fields = ('timestamp', 'member', 'url')
+        fields = ('id', 'timestamp', 'member', 'comment_text', 'up_votes', 'down_votes', 'replies_num')

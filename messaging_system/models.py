@@ -1,9 +1,18 @@
 from __future__ import unicode_literals
+import time
+import os
+
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-
 from django.db import models
+
+
+def get_file_path(instance, filename):
+    path = 'MessageFiles/' + time.strftime('/%Y/%m/%d/')
+    ext = filename.split('.')[-1]
+    filename = "file-%s-%s.%s" % (instance.id, int(time.mktime(instance.sent_at.timetuple())), ext)
+    return os.path.join(path, filename)
 
 
 class Thread(models.Model):
@@ -22,6 +31,7 @@ class Message(models.Model):
 
     thread = models.ForeignKey(Thread)
     body = models.TextField()
+    file = models.FileField(upload_to=get_file_path, null=True, blank=True)
     sender = models.ForeignKey(settings.AUTH_USER_MODEL)
     sent_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)

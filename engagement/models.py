@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 import re
+import os
+import time
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
@@ -9,6 +11,13 @@ from django.db import models
 from essential.models import Notification
 
 
+def get_file_path(instance, filename):
+    path = 'Comments/' + time.strftime('/%Y/%m/%d/')
+    ext = filename.split('.')[-1]
+    filename = "file-%s-%s.%s" % (instance.id, int(time.mktime(instance.timesetamp.timetuple())), ext)
+    return os.path.join(path, filename)
+
+
 class Engagement(models.Model):
     """
     Everything extending this acts as a log
@@ -16,7 +25,7 @@ class Engagement(models.Model):
     publication_user -> stores the link to Contributor List model of publication app, in case the actor is publication
     """
 
-    publication_user = models.ForeignKey('publication.ContributorList', null=True)
+    publication_user = models.ForeignKey('publication.ContributorList', null=True, blank=True)
     LIMIT = models.Q(app_label='publication',
                      model='publication') | models.Q(app_label='user_custom',
                                                      model='user')
@@ -52,8 +61,10 @@ class Comment(Engagement):
 
     write_up = models.ForeignKey('write_up.WriteUp', on_delete=models.CASCADE)
     comment_text = models.TextField(blank=False, null=False)
+    image = models.ImageField(upload_to=get_file_path, null=True, blank=True)
     up_votes = models.PositiveIntegerField(default=0)
     down_votes = models.PositiveIntegerField(default=0)
+    replies_num = models.PositiveSmallIntegerField(default=0)
     reply_to = models.ForeignKey("self", null=True, blank=True)
     delete_request = models.BooleanField(default=False)
 
