@@ -13,7 +13,7 @@ from django.conf import settings
 def get_logo_file_path(instance, filename):
     path = 'Publication/Logo' + time.strftime('/%Y/%m/%d/')
     ext = filename.split('.')[-1]
-    filename = "%s.%s" % (instance.publication.uuid, ext)
+    filename = "%s.%s" % (instance.uuid, ext)
     return os.path.join(path, filename)
 
 

@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 import re
 import os
 import time
+from datetime import datetime
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
@@ -14,7 +15,7 @@ from essential.models import Notification
 def get_file_path(instance, filename):
     path = 'Comments/' + time.strftime('/%Y/%m/%d/')
     ext = filename.split('.')[-1]
-    filename = "file-%s-%s.%s" % (instance.id, int(time.mktime(instance.timesetamp.timetuple())), ext)
+    filename = "file-%s.%s" % (int(time.mktime(datetime.now().timetuple())), ext)
     return os.path.join(path, filename)
 
 
