@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models.expressions import F
 
 from essential.models import Notification
 
@@ -71,7 +72,7 @@ class Comment(Engagement):
 
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='comment')
 
-    def parse_text(self):
+    def parse_text(self):  # TODO: make this async
         username_list = [x.strip('@') for x in re.findall(r'\B@\w+', self.comment_text)]
         for username in username_list:
             try:
@@ -80,6 +81,15 @@ class Comment(Engagement):
                 pass
             else:
                 Notification.objects.notify(user=user, write_up=self.write_up, notification_type='CT')
+
+    def increment_parent_counter(self):
+        if self.reply_to:
+            self.reply_to.replies_num = F('replies_num') + 1
+            self.reply_to.save()
+
+    def process_comment(self):
+        pass
+        # call increment_parent_counter and parse text as async job
 
 
 class VoteComment(Engagement):

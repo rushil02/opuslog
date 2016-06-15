@@ -2,12 +2,21 @@ from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
+from engagement.views import CommentFirstLevelView, CommentNestedView
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 from publication.models import Publication
 
 
-class PublicationThreads(ThreadView):
+class GetActor(object):
+    """ For Method inherited by every Publication API class."""
+
+    def get_actor(self):
+        return get_object_or_404(Publication, contributorlist__contributor=self.request.user,
+                                 contributorlist__current=True)
+
+
+class PublicationThreads(GetActor, ThreadView):
     """ Implements ThreadView for Publication entity. """
 
     def get_queryset(self):
@@ -16,10 +25,6 @@ class PublicationThreads(ThreadView):
                                          threadmembers__publication__contributorlist__current=True)
         except Exception as e:
             raise SuspiciousOperation(e.message)
-
-    def get_entity(self):
-        return get_object_or_404(Publication, contributorlist__contributor=self.request.user,
-                                 contributorlist__current=True)
 
 
 class AddDeleteMemberToThread(AddDeleteMemberView):
@@ -35,3 +40,13 @@ class MessageOfThread(MessageView):
 def publication_page(request, publication_handler):
     # TODO: redirect to this page when requested for a publication's detail page
     return HttpResponse("You reached on some other publication's {%s} home page" % publication_handler)
+
+
+class PublicationCommentFirstLevel(GetActor, CommentFirstLevelView):
+    """ Implements PublicationView for posting/fetching first level comments. """
+    pass
+
+
+class PublicationCommentNested(GetActor, CommentNestedView):
+    """ Implements PublicationView for posting/fetching nested comments. """
+    pass

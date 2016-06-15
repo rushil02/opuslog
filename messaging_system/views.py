@@ -19,7 +19,7 @@ class ThreadView(ListAPIView):
     serializer_class = ThreadSerializer
 
     @abc.abstractmethod
-    def get_entity(self):
+    def get_actor(self):
         raise NotImplementedError("Override in subclass")
 
     def post(self, request, *args, **kwargs):
@@ -91,5 +91,5 @@ class MessageView(ListAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(thread=self.get_thread(), sender=request.user)
+        serializer.save(thread=self.get_thread(), sender=request.user)  # FIXME: Sender is publication or user?
         return Response(serializer.data)

@@ -1,3 +1,5 @@
+import abc
+
 from django.core.exceptions import SuspiciousOperation
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import ListAPIView
@@ -13,42 +15,13 @@ class CommentFirstLevelView(ListAPIView):
 
     serializer_class = CommentSerializer
 
-    def get_object(self):
-        write_up_id = self.kwargs.get('write_up_id', None)
-        if write_up_id:
-            return get_object_or_404(WriteUp, id=write_up_id)
-        else:
-            raise SuspiciousOperation("No object found")
-
-    def get_queryset(self):
-        return Comment.objects.filter(write_up=self.get_object(), reply_to=None)
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(write_up=self.get_object(), actor=request.user)
-        return Response(serializer.data)
-
-
-class CommentNestedView(ListAPIView):
-    """"""
-
-    serializer_class = CommentSerializer
-
-    write_up = None
     reply_to = None
+    write_up = None
 
     def get_object(self):
-        write_up_id = self.kwargs.get('write_up_id', None)
-        if write_up_id:
-            return get_object_or_404(WriteUp, id=write_up_id)
-        else:
-            raise SuspiciousOperation("No object found")
-
-    def get_comment(self):
-        comment_id = self.kwargs.get('comment_id', None)
-        if comment_id:
-            return get_object_or_404(Comment, id=comment_id)
+        write_up_uuid = self.kwargs.get('write_up_uuid', None)
+        if write_up_uuid:
+            return get_object_or_404(WriteUp, uuid=write_up_uuid)
         else:
             raise SuspiciousOperation("No object found")
 
@@ -60,8 +33,27 @@ class CommentNestedView(ListAPIView):
         self.validate()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(write_up=self.write_up, actor=request.user, reply_to=self.reply_to)
+        obj = serializer.save(write_up=self.write_up, actor=self.get_actor(), reply_to=self.reply_to)
+        obj.process_comment()
         return Response(serializer.data)
+
+    @abc.abstractmethod
+    def get_actor(self):
+        raise NotImplementedError("Override in subclass")
+
+    def validate(self):
+        self.write_up = self.get_object()
+
+
+class CommentNestedView(CommentFirstLevelView):
+    """"""
+
+    def get_comment(self):
+        comment_id = self.kwargs.get('comment_id', None)
+        if comment_id:
+            return get_object_or_404(Comment, id=comment_id)
+        else:
+            raise SuspiciousOperation("No object found")
 
     def validate(self):
         self.write_up = self.get_object()

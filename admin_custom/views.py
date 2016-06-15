@@ -22,4 +22,4 @@ def staff_registration(request):
         context = {
             "form": sign_up_form
         }
-        return render()(request, 'client_registration.html', context)
+        return render(request, 'client_registration.html', context)
