@@ -3,6 +3,7 @@ import abc
 from django.core.exceptions import SuspiciousOperation
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import ListAPIView
+
 from rest_framework.response import Response
 
 from engagement.models import Comment
@@ -60,3 +61,11 @@ class CommentNestedView(CommentFirstLevelView):
         self.reply_to = self.get_comment()
         if not self.write_up.comment_set.filter(pk=self.reply_to.pk).exists():
             raise SuspiciousOperation("No object found.")
+
+    def delete(self, request, *args, **kwargs):
+        self.validate()
+        comment = self.reply_to
+        comment.delete_request = True
+        comment.save()
+        serializer = self.get_serializer(comment)
+        return Response(serializer.data)
