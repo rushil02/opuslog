@@ -19,20 +19,31 @@ class UserThreads(GetActor, ThreadView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Thread.objects.filter(threadmembers__user=self.request.user).select_related('created_by')
+        return Thread.objects.filter(threadmember__user=self.request.user).select_related('created_by')
 
     def get_thread_query(self, thread_id):
-        return get_object_or_404(Thread, id=thread_id, threadmembers__user=self.request.user)
+        return get_object_or_404(Thread, id=thread_id, threadmember__user=self.request.user)
 
 
-class AddDeleteMemberToThread(AddDeleteMemberView):
+class AddDeleteMemberToThread(GetActor, AddDeleteMemberView):
     """ Implements AddDeleteMemberView for User entity. """
-    pass
+
+    permission_classes = [IsAuthenticated]
+
+    def get_thread_query(self, thread_id):
+        return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
 
 
-class MessageOfThread(MessageView):
+class MessageOfThread(GetActor, MessageView):
     """ Implements MessageView for User entity. """
-    pass
+
+    permission_classes = [IsAuthenticated]
+
+    def get_thread_query(self, thread_id):
+        return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
+
+    def set_user(self):
+        return None
 
 
 class UserCommentFirstLevel(GetActor, CommentFirstLevelView):

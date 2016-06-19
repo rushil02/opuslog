@@ -22,27 +22,42 @@ class GetActor(object):
 class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
     """ Implements ThreadView for Publication entity. """
 
-    permissions = ['canAccess.Thread']
+    # permissions = ['access_threads']
+    permissions = {'get': ['read_threads'], 'post': ['create_threads'], 'patch': ['update_threads']}
+    permission_classes = []
 
     def get_queryset(self):
         try:
-            return Thread.objects.filter(threadmembers__publication=self.get_actor())
+            return Thread.objects.filter(threadmember__publication=self.get_actor())
         except Exception as e:
             raise SuspiciousOperation(e.message)
 
     def get_thread_query(self, thread_id):
-        return get_object_or_404(Thread, id=thread_id,
-                                 threadmembers__publication=self.request.user.publication_identity)
+        return get_object_or_404(Thread, id=thread_id, threadmember__publication=self.get_actor())
 
 
-class AddDeleteMemberToThread(AddDeleteMemberView):
+class AddDeleteMemberToThread(GetActor, UserPublicationPermissionMixin, AddDeleteMemberView):
     """ Implements AddDeleteMemberView for Publication entity. """
-    pass
+
+    permissions = {'post': ['create_ThreadMember'], 'delete': ['delete_ThreadMember']}
+    permission_classes = []
+
+    def get_thread_query(self, thread_id):
+        return get_object_or_404(Thread, id=thread_id, threadmember__publication=self.get_actor())
 
 
-class MessageOfThread(MessageView):
+class MessageOfThread(GetActor, UserPublicationPermissionMixin, MessageView):
     """ Implements MessageView for Publication entity. """
-    pass
+
+    permissions = {'get': ['read_messages'], 'post': ['create_messages'], }
+    permission_classes = []
+
+    def get_thread_query(self, thread_id):
+        return get_object_or_404(Thread, id=thread_id, threadmember__publication=self.get_actor())
+
+    def set_user(self):
+        return self.request.user
+
 
 
 def publication_page(request, publication_handler):

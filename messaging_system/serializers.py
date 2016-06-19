@@ -5,14 +5,14 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.fields import SerializerMethodField
 
 from admin_custom.fields import UserPublicationSerializedField
-from messaging_system.models import Thread, ThreadMembers, Message
+from messaging_system.models import Thread, ThreadMember, Message
 from publication.models import Publication
 from publication.serializers import PublicationSerializerTwo
 from user_custom.serializers import UserSerializerTwo
 
 
-class ThreadMembersSerializer(serializers.ModelSerializer):
-    """ Serializes ThreadMembers model """
+class ThreadMemberSerializer(serializers.ModelSerializer):
+    """ Serializes ThreadMember model """
 
     member = UserPublicationSerializedField(source='entity', read_only=True,
                                             user_serializer=UserSerializerTwo,
@@ -20,7 +20,7 @@ class ThreadMembersSerializer(serializers.ModelSerializer):
     content_type = serializers.StringRelatedField(read_only=True)
 
     class Meta:
-        model = ThreadMembers
+        model = ThreadMember
         fields = ('content_type', 'member')
 
 
@@ -53,8 +53,8 @@ class ThreadSerializer(serializers.ModelSerializer):
     created_by = serializers.StringRelatedField(read_only=True)
 
     def get_members(self, thread):
-        members_queryset = thread.threadmembers_set.all().prefetch_related('entity')
-        serializer = ThreadMembersSerializer(instance=members_queryset, many=True)
+        members_queryset = thread.threadmember_set.all().prefetch_related('entity')
+        serializer = ThreadMemberSerializer(instance=members_queryset, many=True)
         return serializer.data
 
     class Meta:

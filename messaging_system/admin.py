@@ -1,7 +1,7 @@
 from django.contrib import admin
 
-from messaging_system.models import Thread, ThreadMembers, Message
+from messaging_system.models import Thread, ThreadMember, Message
 
 admin.site.register(Thread)
-admin.site.register(ThreadMembers)
+admin.site.register(ThreadMember)
 admin.site.register(Message)

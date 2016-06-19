@@ -9,7 +9,7 @@ class UserPublicationPermissionMixin(object):
     the dispatch.
     """
 
-    permissions = []
+    permissions = {}
     contributor = None
 
     def dispatch(self, request, *args, **kwargs):
@@ -21,8 +21,12 @@ class UserPublicationPermissionMixin(object):
         contributor = ContributorList.objects.filter(
             contributor=request.user, publication=request.user.publication_identity
         )
-        for permission in self.permissions:
-            contributor = contributor.filter(permissions__code_name=permission)
+
+        if self.permissions.get(str(request.method.lower())):
+            for permission in self.permissions.get(str(request.method.lower())):
+                contributor = contributor.filter(permissions__code_name=permission)
+        else:
+            raise PermissionDenied
 
         if not contributor:
             raise PermissionDenied

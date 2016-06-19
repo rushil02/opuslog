@@ -23,6 +23,18 @@ class Thread(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL)
     create_time = models.DateTimeField(auto_now_add=True)
 
+    class Permissions:
+        permission_list = [
+            {'name': 'Can create threads', 'code_name': 'create_threads', 'for': 'P',
+             'help_text': 'Allow contributor to create threads'},
+            {'name': 'Can update threads', 'code_name': 'update_threads', 'for': 'P',
+             'help_text': 'Allow contributor to update subject of threads'},
+            {'name': 'Can read threads', 'code_name': 'read_threads', 'for': 'P',
+             'help_text': 'Allow contributor to read list of threads'},
+            {'name': 'Can delete threads', 'code_name': 'delete_threads', 'for': 'P',
+             'help_text': 'Allow contributor to delete threads'},
+        ]
+
     def __unicode__(self):
         return self.subject
 
@@ -33,15 +45,28 @@ class Message(models.Model):
     thread = models.ForeignKey(Thread)
     body = models.TextField()
     file = models.FileField(upload_to=get_file_path, null=True, blank=True)
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL)
+    sender = models.ForeignKey('messaging_system.ThreadMember')
+    publication_user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True)
     sent_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
+
+    class Permissions:
+        permission_list = [
+            {'name': 'Can create messages', 'code_name': 'create_messages', 'for': 'P',
+             'help_text': 'Allow contributor to create messages'},
+            {'name': 'Can update messages', 'code_name': 'update_messages', 'for': 'P',
+             'help_text': 'Allow contributor to update subject of messages'},
+            {'name': 'Can read messages', 'code_name': 'read_messages', 'for': 'P',
+             'help_text': 'Allow contributor to read list of messages'},
+            {'name': 'Can delete messages', 'code_name': 'delete_messages', 'for': 'P',
+             'help_text': 'Allow contributor to delete messages'},
+        ]
 
     def __unicode__(self):
         return self.thread.subject
 
 
-class ThreadMembers(models.Model):
+class ThreadMember(models.Model):  # TODO: mute
     """ Acts as intermediary table for Thread and User/Publication """
 
     thread = models.ForeignKey(Thread)
@@ -56,6 +81,18 @@ class ThreadMembers(models.Model):
     removed = models.BooleanField(default=False)
     entity = GenericForeignKey('content_type', 'object_id')
     create_time = models.DateTimeField(auto_now_add=True)
+
+    class Permissions:
+        permission_list = [
+            {'name': 'Can create ThreadMember', 'code_name': 'create_ThreadMember', 'for': 'P',
+             'help_text': 'Allow contributor to create ThreadMember'},
+            {'name': 'Can update ThreadMember', 'code_name': 'update_ThreadMember', 'for': 'P',
+             'help_text': 'Allow contributor to update subject of ThreadMember'},
+            {'name': 'Can read ThreadMember', 'code_name': 'read_ThreadMember', 'for': 'P',
+             'help_text': 'Allow contributor to read list of ThreadMember'},
+            {'name': 'Can delete ThreadMember', 'code_name': 'delete_ThreadMember', 'for': 'P',
+             'help_text': 'Allow contributor to delete ThreadMember'},
+        ]
 
     def __unicode__(self):
         return self.entity.__unicode__()

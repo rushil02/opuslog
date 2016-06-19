@@ -65,7 +65,7 @@ class User(AbstractUser):
     received_requests = GenericRelation('essential.Request', content_type_field='request_to_content_type',
                                         object_id_field='request_to_object_id',
                                         related_query_name='user_received_request')
-    threads = GenericRelation('messaging_system.ThreadMembers', related_query_name='user')
+    threads = GenericRelation('messaging_system.ThreadMember', related_query_name='user')
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='user')
 
     def get_full_name(self):

@@ -144,6 +144,7 @@ class Permission(models.Model):
                 ('B', 'Both')
                 )
     permission_for = models.CharField(max_length=1, choices=FOR_TYPE)
+    content_type = models.ForeignKey(ContentType, null=True, blank=True, related_name='contributor_permission')
     create_time = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):

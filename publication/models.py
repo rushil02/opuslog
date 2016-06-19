@@ -70,7 +70,7 @@ class Publication(models.Model):
     received_requests = GenericRelation('essential.Request', content_type_field='request_to_content_type',
                                         object_id_field='request_to_object_id',
                                         related_query_name='publication_received_request')
-    threads = GenericRelation('messaging_system.ThreadMembers', related_query_name='publication')
+    threads = GenericRelation('messaging_system.ThreadMember', related_query_name='publication')
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='publication')
 
     objects = PublicationManager()
