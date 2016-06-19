@@ -26,14 +26,13 @@ def has_publication_perm(acc_perm_code=None):
     def _has_publication_perm(view_func):
         def _decorator(request, *args, **kwargs):
             try:
-                uuid = kwargs.get('publication_uuid')
                 contributor = request.user.contributed_publications.get_contributor_for_publication_with_perm(
-                    publication_uuid=uuid, acc_perm_code=acc_perm_code
+                    publication=request.user.publication_identity, acc_perm_code=acc_perm_code
                 )
             except Exception as e:
                 raise SuspiciousOperation(e.message)
             else:
-                kwargs.update({'contributor': contributor})
+                kwargs.update({'publication_contributor': contributor})
             return view_func(request, *args, **kwargs)
 
         return wraps(view_func)(_decorator)

@@ -22,17 +22,24 @@ class ThreadView(ListAPIView):
     def get_actor(self):
         raise NotImplementedError("Override in subclass")
 
+    @abc.abstractmethod
+    def get_thread_query(self, thread_id):
+        raise NotImplementedError("Override in subclass")
+
     def post(self, request, *args, **kwargs):
+        """ Create new Thread and assign thread creator as thread member """
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save(created_by=request.user)
-        obj.threadmembers_set.create(entity=self.get_entity())
+        obj.threadmembers_set.create(entity=self.get_actor())
         return Response(serializer.data)
 
     def get_object(self):
         thread_id = self.kwargs.get('thread_id', None)
         if thread_id:
-            return get_object_or_404(Thread, id=thread_id)
+            obj = self.get_thread_query(thread_id)
+            return obj
         else:
             raise SuspiciousOperation("No object found")
 

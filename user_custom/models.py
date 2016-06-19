@@ -4,14 +4,12 @@ import os
 import uuid
 
 from django.contrib.contenttypes.fields import GenericRelation
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from cities_light.models import Region, Country, City
 from django.conf import settings
-
-from admin_custom.custom_errors import PermissionDenied
 
 
 def get_file_path(instance, filename):
@@ -51,7 +49,7 @@ class User(AbstractUser):
     publication for the user. It should be null if the last identity was user.
     """
 
-    publication_identity = models.BooleanField(default=False)
+    publication_identity = models.ForeignKey("publication.Publication", null=True, blank=True)
     profile_image = models.ImageField(upload_to=get_file_path, null=True, blank=True)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

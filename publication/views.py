@@ -2,29 +2,37 @@ from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
+from publication.permissions import UserPublicationPermissionMixin
 from engagement.views import CommentFirstLevelView, CommentNestedView
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
-from publication.models import Publication
 
 
 class GetActor(object):
     """ For Method inherited by every Publication API class."""
 
     def get_actor(self):
-        return get_object_or_404(Publication, contributorlist__contributor=self.request.user,
-                                 contributorlist__current=True)
+        obj = self.request.user.publication_identity
+        if obj:
+            return obj
+        else:
+            raise SuspiciousOperation("No object found")
 
 
-class PublicationThreads(GetActor, ThreadView):
+class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
     """ Implements ThreadView for Publication entity. """
+
+    permissions = ['canAccess.Thread']
 
     def get_queryset(self):
         try:
-            return Thread.objects.filter(threadmembers__publication__contributorlist__contributor=self.request.user,
-                                         threadmembers__publication__contributorlist__current=True)
+            return Thread.objects.filter(threadmembers__publication=self.get_actor())
         except Exception as e:
             raise SuspiciousOperation(e.message)
+
+    def get_thread_query(self, thread_id):
+        return get_object_or_404(Thread, id=thread_id,
+                                 threadmembers__publication=self.request.user.publication_identity)
 
 
 class AddDeleteMemberToThread(AddDeleteMemberView):

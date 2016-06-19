@@ -3,7 +3,6 @@ import abc
 from django.core.exceptions import SuspiciousOperation
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import ListAPIView
-
 from rest_framework.response import Response
 
 from engagement.models import Comment
@@ -35,7 +34,7 @@ class CommentFirstLevelView(ListAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save(write_up=self.write_up, actor=self.get_actor(), reply_to=self.reply_to)
-        obj.process_comment()
+        obj.process_comment_async()
         return Response(serializer.data)
 
     @abc.abstractmethod
@@ -69,3 +68,5 @@ class CommentNestedView(CommentFirstLevelView):
         comment.save()
         serializer = self.get_serializer(comment)
         return Response(serializer.data)
+
+# class DeleteComment

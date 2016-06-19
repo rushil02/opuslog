@@ -11,7 +11,7 @@ class UserPublicationUnicodeField(serializers.RelatedField):
 
     def to_representation(self, value):
         if isinstance(value, Publication):
-            return value.name
+            return value.handler
         elif isinstance(value, get_user_model()):
             return value.username
         raise Exception('Unexpected type of object')

@@ -17,6 +17,9 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
     ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ),
     'DEFAULT_CONTENT_NEGOTIATION_CLASS': 'admin_custom.api_negotiation.IgnoreClientContentNegotiation',
     'PAGE_SIZE': 10
 }

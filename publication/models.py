@@ -89,16 +89,16 @@ class ContributorListQuerySet(models.QuerySet):
     def permission(self, acc_perm_code):
         return self.filter(Q(permissions__code_name=acc_perm_code) | Q(level='C'))
 
-    def for_publication(self, publication_uuid):
-        return self.select_related('publication').get(publication__uuid=publication_uuid)
+    def for_publication(self, publication):
+        return self.get(publication=publication)
 
 
 class ContributorListManager(models.Manager):
     def get_queryset(self):
         return ContributorListQuerySet(self.model, using=self._db)
 
-    def get_contributor_for_publication_with_perm(self, publication_uuid, acc_perm_code):
-        return self.get_queryset().permission(acc_perm_code).for_publication(publication_uuid)
+    def get_contributor_for_publication_with_perm(self, publication, acc_perm_code):
+        return self.get_queryset().permission(acc_perm_code).for_publication(publication)
 
 
 class ContributorList(models.Model):
@@ -121,7 +121,6 @@ class ContributorList(models.Model):
              )
     level = models.CharField(max_length=1, choices=LEVEL)
     permissions = models.ManyToManyField('essential.Permission', related_name='publication_permissions')
-    current = models.BooleanField(default=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 

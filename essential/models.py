@@ -146,6 +146,9 @@ class Permission(models.Model):
     permission_for = models.CharField(max_length=1, choices=FOR_TYPE)
     create_time = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return self.code_name
+
 
 class Request(models.Model):
     """ Request by or for a user/publication to contribute in a Publication/Writeup"""

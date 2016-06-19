@@ -1,7 +1,7 @@
 from allauth.account.views import LoginView, login
 from django.contrib.auth import logout, get_user_model
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import SuspiciousOperation, ObjectDoesNotExist
+from django.core.exceptions import SuspiciousOperation, ObjectDoesNotExist, PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
@@ -9,7 +9,6 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import View
 
-from admin_custom.custom_errors import PermissionDenied
 from admin_custom.decorators import has_write_up_perm
 from user_custom.forms import CustomLoginForm, CustomSignupForm
 from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
