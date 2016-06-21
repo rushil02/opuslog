@@ -59,7 +59,6 @@ class MessageOfThread(GetActor, UserPublicationPermissionMixin, MessageView):
         return self.request.user
 
 
-
 def publication_page(request, publication_handler):
     # TODO: redirect to this page when requested for a publication's detail page
     return HttpResponse("You reached on some other publication's {%s} home page" % publication_handler)

@@ -79,6 +79,8 @@ class ThreadMember(models.Model):  # TODO: mute
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
     object_id = models.PositiveIntegerField()
     removed = models.BooleanField(default=False)
+    archive = models.BooleanField(default=False)
+    mute = models.BooleanField(default=False)
     entity = GenericForeignKey('content_type', 'object_id')
     create_time = models.DateTimeField(auto_now_add=True)
 
