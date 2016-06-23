@@ -267,7 +267,7 @@ class Unit(models.Model):
     title = models.CharField(max_length=250, null=True, blank=True)
 
 
-class UnitContributor(models.Model):
+class UnitContributor(models.Model):  # TODO: Discuss if this model is to be related to PublicationActionHistory
     """ Holds the creators for each Chapter/Article in a write up. """
 
     article = models.ForeignKey(Unit)

@@ -3,7 +3,8 @@ import uuid
 import time
 import os
 
-from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.db import models
@@ -140,3 +141,16 @@ class PublicationEnvironment(models.Model):
     theme = models.CharField(max_length=1, choices=CHOICE)
     background = models.ImageField(upload_to=get_background_file_path, null=True, blank=True)
     update_time = models.DateTimeField(auto_now=True)
+
+
+class PublicationActionHistory(models.Model):  # TODO: use with post_save
+    """ Logs all acts by a Publication """
+    # FIXME: publication and user can be replaced with contributorlist
+    publication = models.ForeignKey('publication.Publication')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    entity = GenericForeignKey('content_type', 'object_id')
+
+    def __unicode__(self):
+        return self.publication.handler

@@ -16,11 +16,18 @@ def get_file_path(instance, filename):
     return os.path.join(path, filename)
 
 
-class Thread(models.Model):
+class Thread(models.Model):  # FIXME: created_by changed to GFK from user -> check serializers, views etc.
     """ Thread is created with group members. """
 
     subject = models.CharField(max_length=125)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL)
+    LIMIT = models.Q(
+        app_label='publication', model='publication'
+    ) | models.Q(
+        app_label='user_custom', model='user'
+    )
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
+    object_id = models.PositiveIntegerField()
+    created_by = GenericForeignKey('content_type', 'object_id')
     create_time = models.DateTimeField(auto_now_add=True)
 
     class Permissions:
@@ -66,8 +73,11 @@ class Message(models.Model):
         return self.thread.subject
 
 
-class ThreadMember(models.Model):  # TODO: mute
-    """ Acts as intermediary table for Thread and User/Publication """
+class ThreadMember(models.Model):  # TODO: mute, change model for single user relation
+    """
+    Acts as intermediary table for Thread and User/Publication
+    Holds all the meta information for each user-thread relationship.
+    """
 
     thread = models.ForeignKey(Thread)
 
@@ -77,8 +87,8 @@ class ThreadMember(models.Model):  # TODO: mute
         app_label='user_custom', model='user'
     )
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
-    entity = GenericForeignKey('content_type', 'object_id')
     object_id = models.PositiveIntegerField()
+    entity = GenericForeignKey('content_type', 'object_id')
     removed = models.BooleanField(default=False)
     archive = models.BooleanField(default=False)
     mute = models.BooleanField(default=False)

@@ -21,10 +21,8 @@ class Engagement(models.Model):
     """
     Everything extending this acts as a log
     actor -> can be either a user or publication
-    publication_user -> stores the link to Contributor List model of publication app, in case the actor is publication
     """
 
-    publication_user = models.ForeignKey('publication.ContributorList', null=True, blank=True)
     LIMIT = models.Q(app_label='publication',
                      model='publication') | models.Q(app_label='user_custom',
                                                      model='user')
@@ -54,7 +52,8 @@ class VoteWriteUp(Engagement):
 class Comment(Engagement):
     """
     Comments can not be deleted or edited but can be replied on (1 LEVEL).
-    Deleting a comment removes the username from display
+    Deleting a comment changes the content for display as -
+    "Comment deleted by user"
     users can be tagged using the '@' key-letter
     """
 
