@@ -140,7 +140,7 @@ class WriteUp(models.Model):
 
         redirect_url = {
             'B': '',
-            'M': '',
+            'M': '/edit_magazine_chapters/',
             'I': '/edit_article/',
             'L': '',
             'G': '',
@@ -166,7 +166,13 @@ class WriteUp(models.Model):
         GroupWriting.objects.create(write_up=self)
 
     def get_all_chapters(self):
-        return self.bookchapter_set.all()
+        return self.collectionunit_set.all().select_related('article').order_by('sort_id')
+
+    def get_owner(self):
+        return self.contributorlist_set.get(is_owner=True)
+
+    def get_chapter_from_index(self, i):
+        return self.get_all_chapters().select_related('article__text')[i - 1]
 
 
 class WriteupProfile(models.Model):
@@ -249,9 +255,10 @@ class BaseDesign(models.Model):
     text = models.TextField()
     update_time = models.DateTimeField(auto_now=True)
 
-    def save_with_rev(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # TODO: send user
-        RevisionHistory.objects.create(user=user, parent=self, title=self.title, text=self.text)
+    def save_with_revision(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        title = kwargs.pop('title', None)
+        RevisionHistory.objects.create(user=user, parent=self, title=title, text=self.text)
         super(BaseDesign, self).save(*args, **kwargs)
 
     def __unicode__(self):

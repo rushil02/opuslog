@@ -12,8 +12,8 @@ from django.views.generic import View
 from admin_custom.custom_errors import PermissionDenied
 from admin_custom.decorators import has_write_up_perm
 from user_custom.forms import CustomLoginForm, CustomSignupForm
-from write_up.forms import AddContributorForm, EditPermissionFormSet, IndependentArticleForm
-from write_up.views import CreateWriteUpView, EditWriteUpView
+from write_up.forms import AddContributorForm, EditPermissionFormSet
+from write_up.views import CreateWriteUpView, EditWriteUpView, EditIndependentArticle, CollectionUnitView
 
 
 def check_user(request):
@@ -69,58 +69,6 @@ def user_acc(request):
     return HttpResponse("Logged In")
 
 
-@has_write_up_perm('CAN_EDIT', collection_type='I')
-def edit_independent_article(request, *args, **kwargs):
-    contributor = kwargs.get('contributor')
-    write_up = contributor.write_up
-    article_unit = write_up.unit
-    article_base_design = article_unit.text
-    success_redirect_url = ""
-    template_name = "write_up/form_template.html"
-
-    form = IndependentArticleForm(request.POST or None, instance=article_base_design, write_up=write_up)
-
-    context = {
-        "form": form
-    }
-
-    if request.POST:
-        if form.is_valid():
-            if form.cleaned_data['title'] != write_up.title:
-                write_up.title = form.cleaned_data['title']
-                write_up.save()
-            form.save()
-            return redirect(success_redirect_url)
-    return render(request, template_name, context)
-
-
-# @has_write_up_perm(acc_perm_code='CAN_EDIT', collection_type='B')
-# def create_chapter_view(request, *args, **kwargs):
-#     contributor = kwargs.get('contributor')
-#     write_up = contributor.write_up
-#     template_name = ""
-#     success_redirect_url = ""
-#
-#     form = BookChapterForm(request.POST or None)
-#     context = {
-#         "form": form
-#     }
-#
-#     if request.POST:
-#         if form.is_valid():
-#             book_chapter = form.save(commit=False)
-#             base_design = BaseDesign.objects.create()
-#             book_chapter.book = write_up
-#             book_chapter.chapter = base_design
-#             book_chapter.relationship = 'I'
-#             book_chapter.save()
-#             return redirect(success_redirect_url)
-#
-#     chapters = write_up.get_all_chapters()
-#     context.update({"chapters": chapters})
-#     return render(request, template_name, context)
-
-
 @login_required
 def add_write_up_contributor(request, write_up_uuid):
     user = request.user
@@ -171,8 +119,9 @@ def edit_permission_view(request, write_up_uuid):  # FIXME: Change permission us
     else:
         contributors = write_up.get_all_contributors()
         formset = EditPermissionFormSet(request.POST or None,
-                                        initial=[{'username': contributor, 'permission_level': contributor.permission_level}
-                                                 for contributor in contributors])
+                                        initial=[
+                                            {'username': contributor, 'permission_level': contributor.permission_level}
+                                            for contributor in contributors])
         context = {
             "formset": formset
         }
@@ -217,3 +166,30 @@ class CreateUserWriteUpView(UserViewMixin, CreateWriteUpView):
 
 class EditUserWriteUpView(UserViewMixin, EditWriteUpView):
     pass
+
+
+edit_write_up_view = login_required()(has_write_up_perm("CAN_EDIT")(EditUserWriteUpView.as_view()))
+
+
+class EditUserIndependentArticleView(UserViewMixin, EditIndependentArticle):
+    pass
+
+
+edit_article_view = login_required()(
+    has_write_up_perm("CAN_EDIT", collection_type='I')(EditUserIndependentArticleView.as_view()))
+
+
+class UserCollectionUnitView(UserViewMixin, CollectionUnitView):
+    pass
+
+
+collection_unit_view = login_required()(
+    has_write_up_perm("CAN_EDIT", collection_type='M')(UserCollectionUnitView.as_view()))
+
+
+class EditUserCollectionArticleView(UserViewMixin, EditIndependentArticle):
+    pass
+
+
+edit_collection_article_view = login_required()(
+    has_write_up_perm("CAN_EDIT", collection_type='M')(EditUserCollectionArticleView.as_view()))
