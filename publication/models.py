@@ -32,7 +32,7 @@ class PublicationManager(models.Manager):
         return self.get_queryset().create(name=name)
 
 
-class Publication(models.Model):
+class Publication(models.Model):  # TODO create default group for each publication
     """
     Defines an actor entity as Publication. Relation to any user is satisfied
     using the model 'ContributorList' with relation attribute 'users'.
@@ -72,6 +72,7 @@ class Publication(models.Model):
                                         related_query_name='publication_received_request')
     threads = GenericRelation('messaging_system.ThreadMember', related_query_name='publication')
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='publication')
+    group = GenericRelation('essential.Group', related_query_name='publication')
 
     objects = PublicationManager()
 
@@ -80,7 +81,7 @@ class Publication(models.Model):
 
     def set_administrator(self, user):
         return ContributorList.objects.create(contributer=user, publication=self, level='A')
-    
+
     def get_handler_url(self):
         return reverse('publication:publication_details', kwargs={'publication_handler': self.handler})
 
@@ -114,12 +115,8 @@ class ContributorList(models.Model):
     publication = models.ForeignKey(Publication)
     share_XP = models.DecimalField(default=0.0, max_digits=8, decimal_places=5)
     share_money = models.DecimalField(default=0.0, max_digits=8, decimal_places=5)
-    LEVEL = (('A', 'Administrator'),  # TODO: Extend list of tags
-             ('E', 'Editor'),
-             ('N', 'Noob'),
-             ('C', 'Creator'),
-             )
-    level = models.CharField(max_length=1, choices=LEVEL)
+    PREDEFINED = ('Owner', 'Administrator', 'Editor', 'Creator')  # TODO: Assign default permissions in View
+    designation = models.CharField(max_length=20, default=PREDEFINED[3])
     permissions = models.ManyToManyField('essential.Permission', related_name='publication_permissions')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)

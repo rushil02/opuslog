@@ -100,6 +100,8 @@ class WriteUp(models.Model):
                                    object_id_field='request_for_object_id', related_query_name='write_up')
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='write_up')
 
+    group = models.ForeignKey('essential.Group')
+
     objects = WriteUpManager()
 
     def __unicode__(self):

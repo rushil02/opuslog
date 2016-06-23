@@ -127,13 +127,43 @@ class Tag(models.Model):
     create_time = models.DateTimeField(auto_now_add=True)
 
 
+class Group(models.Model):
+    """
+    Works as folders or categorising write ups internally for a creator entity.
+    Publication additionally can assign permissions over this categorisation
+    to its contributor.
+    """
+
+    LIMIT = models.Q(
+        app_label='publication', model='publication'
+    ) | models.Q(
+        app_label='user_custom', model='user'
+    )
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
+    entity = GenericForeignKey('content_type', 'object_id')
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        unique_together = ('content_type', 'object_id', 'name')
+
+
+class GroupContributor(models.Model):
+    """
+    Intermediary table for defining write up level permissions to each
+    contributor of a publication.
+    """
+
+    group = models.ForeignKey(Group)
+    contributor = models.ForeignKey('publication.ContributorList')
+    permission = models.ManyToManyField('essential.Permission')
+
+    class Meta:
+        unique_together = ('group', 'contributor')
+
+
 class Permission(models.Model):
     """
-    Defines permission for each contributor in Writeup/Publication
-
-    Holds an entry 'all_perm_owner' for owner which is set as default. This is
-    a redundant check to avoid any missed relation. While 'is_owner' and
-    'level' is already set in the writeup and Publication models respectively.
+    Defines permission for each contributor in Writeup/Publication.
     """
 
     name = models.CharField(max_length=100)
@@ -141,9 +171,8 @@ class Permission(models.Model):
     code_name = models.CharField(max_length=30)
     FOR_TYPE = (('W', 'Write up'),
                 ('P', 'Publication'),
-                ('B', 'Both')
                 )
-    permission_for = models.CharField(max_length=1, choices=FOR_TYPE)
+    permission_type = models.CharField(max_length=1, choices=FOR_TYPE)
     content_type = models.ForeignKey(ContentType, null=True, blank=True, related_name='contributor_permission')
     create_time = models.DateTimeField(auto_now_add=True)
 
