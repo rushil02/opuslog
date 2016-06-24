@@ -52,6 +52,7 @@ class BaseDesignForm(forms.ModelForm):
         if 'save_with_revision' in self.data:
             if self.cleaned_data['revision_history_title'] in ["", None]:
                 raise ValidationError("This field is required.")
+            return self.cleaned_data['revision_history_title']
 
 
 class CollectionUnitForm(forms.ModelForm):

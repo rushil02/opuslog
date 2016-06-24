@@ -45,7 +45,6 @@ from datetime import datetime
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import Q
 from django.conf import settings
 
 
@@ -184,8 +183,16 @@ class WriteupProfile(models.Model):
 
 
 class ContributorListQuerySet(models.QuerySet):
-    def permission(self, acc_perm_code):
-        return self.filter(Q(permissions__code_name=acc_perm_code) | Q(is_owner=True))
+    def permission(self, permission_list):
+        permission_qs = self
+        owner_qs = self
+        for permission in permission_list:
+            permission_qs = permission_qs.filter(permissions__code_name=permission)
+        qs = permission_qs | owner_qs.owner()
+        return qs
+
+    def owner(self):
+        return self.filter(is_owner=True)
 
     def for_write_up(self, write_up_uuid, collection_type=None):
         if collection_type:
@@ -199,12 +206,15 @@ class ContributorListManager(models.Manager):
     def get_queryset(self):
         return ContributorListQuerySet(self.model, using=self._db)
 
-    def get_contributor_for_writeup_with_perm(self, write_up_uuid, acc_perm_code, collection_type=None):
-        return self.get_queryset().permission(acc_perm_code).for_write_up(write_up_uuid, collection_type)
+    def get_contributor_for_writeup_with_perm(self, write_up_uuid, permission_list, collection_type=None):
+        return self.get_queryset().permission(permission_list).for_write_up(write_up_uuid, collection_type)
 
     def create_contributor(self, contributor, write_up, is_owner=False, share_XP=None, share_money=None):
         return self.get_queryset().create(contributor=contributor, write_up=write_up, is_owner=is_owner,
                                           share_XP=share_XP, share_money=share_money)
+
+    def get_owner_for_permission(self, write_up_uuid, collection_type=None):
+        return self.get_queryset().owner().for_write_up(write_up_uuid, collection_type)
 
 
 # TODO: create celery task to validate and update per write_up engagement based XP/money for user

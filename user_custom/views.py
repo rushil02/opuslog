@@ -10,10 +10,10 @@ from django.views.decorators.http import require_POST
 from django.views.generic import View
 
 from admin_custom.custom_errors import PermissionDenied
-from admin_custom.decorators import has_write_up_perm
 from user_custom.forms import CustomLoginForm, CustomSignupForm
 from write_up.forms import AddContributorForm, EditPermissionFormSet
-from write_up.views import CreateWriteUpView, EditWriteUpView, EditIndependentArticle, CollectionUnitView
+from write_up.views import CreateWriteUpView, EditWriteUpView, CollectionUnitView, \
+    EditBaseDesign
 
 
 def check_user(request):
@@ -165,31 +165,31 @@ class CreateUserWriteUpView(UserViewMixin, CreateWriteUpView):
 
 
 class EditUserWriteUpView(UserViewMixin, EditWriteUpView):
-    pass
+    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
 
 
-edit_write_up_view = login_required()(has_write_up_perm("CAN_EDIT")(EditUserWriteUpView.as_view()))
+edit_write_up_view = login_required()(EditUserWriteUpView.as_view())
 
 
-class EditUserIndependentArticleView(UserViewMixin, EditIndependentArticle):
-    pass
+class EditUserIndependentArticleView(UserViewMixin, EditBaseDesign):
+    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+    collection_type = 'I'
 
 
-edit_article_view = login_required()(
-    has_write_up_perm("CAN_EDIT", collection_type='I')(EditUserIndependentArticleView.as_view()))
+edit_article_view = login_required()(EditUserIndependentArticleView.as_view())
 
 
 class UserCollectionUnitView(UserViewMixin, CollectionUnitView):
-    pass
+    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+    collection_type = 'M'
 
 
-collection_unit_view = login_required()(
-    has_write_up_perm("CAN_EDIT", collection_type='M')(UserCollectionUnitView.as_view()))
+collection_unit_view = login_required()(UserCollectionUnitView.as_view())
 
 
-class EditUserCollectionArticleView(UserViewMixin, EditIndependentArticle):
-    pass
+class EditUserCollectionArticleView(UserViewMixin, EditBaseDesign):
+    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+    collection_type = 'M'
 
 
-edit_collection_article_view = login_required()(
-    has_write_up_perm("CAN_EDIT", collection_type='M')(EditUserCollectionArticleView.as_view()))
+edit_collection_article_view = login_required()(EditUserCollectionArticleView.as_view())

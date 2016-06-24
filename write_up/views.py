@@ -2,9 +2,8 @@ import abc
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import SuspiciousOperation
-from django.http.response import HttpResponseRedirect
+from django.http.response import HttpResponseRedirect, HttpResponseForbidden
 from django.views.generic.base import TemplateResponseMixin, View
-
 from django.views.generic.edit import BaseCreateView, BaseUpdateView, ModelFormMixin
 
 from write_up.forms import CreateWriteUpForm, EditWriteUpForm, BaseDesignForm, CollectionUnitForm
@@ -23,6 +22,25 @@ class UserPublicationMixin(object):
     @abc.abstractmethod
     def get_success_url_prefix(self):
         raise NotImplementedError("Not Implemented Error")
+
+
+class WriteupPermissionMixin(object):
+    contributor = None
+    permissions = {}
+    collection_type = None
+
+    def dispatch(self, request, *args, **kwargs):
+        method_permission_list = self.permissions.get(request.method.lower())
+        if method_permission_list:
+            uuid = self.kwargs.get('write_up_uuid')
+            try:
+                self.contributor = self.get_user() \
+                    .contribution.get_contributor_for_writeup_with_perm(uuid,
+                                                                        method_permission_list,
+                                                                        collection_type=self.collection_type)
+            except:
+                return HttpResponseForbidden()
+        return super(WriteupPermissionMixin, self).dispatch(request, *args, **kwargs)
 
 
 class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateView):
@@ -46,14 +64,12 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
         return HttpResponseRedirect(self.get_success_url())
 
 
-class EditWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseUpdateView):
+class EditWriteUpView(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, BaseUpdateView):
     form_class = EditWriteUpForm
     model = WriteUp
     template_name = "write_up/form_template.html"
-    contributor = None
 
     def get_object(self, queryset=None):
-        self.contributor = self.kwargs.get('contributor')
         return self.contributor.write_up
 
     def get_success_url(self):
@@ -62,16 +78,14 @@ class EditWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseUpdateVie
         return user_type_prefix + "/edit_write_up/" + str(write_up.uuid)
 
 
-class EditIndependentArticle(UserPublicationMixin, TemplateResponseMixin, BaseUpdateView):
+class EditBaseDesign(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, BaseUpdateView):
     model = BaseDesign
     template_name = "write_up/form_template.html"
     form_class = BaseDesignForm
-    contributor = None
     write_up = None
     article_unit = None
 
     def get_object(self, queryset=None):
-        self.contributor = self.kwargs.get('contributor')
         self.write_up = self.contributor.write_up
         method_name = 'get_object_for_' + self.write_up.collection_type
         method = getattr(self, method_name)
@@ -92,7 +106,7 @@ class EditIndependentArticle(UserPublicationMixin, TemplateResponseMixin, BaseUp
             return self.article_unit.text
 
     def get_form_kwargs(self):
-        kwargs = super(EditIndependentArticle, self).get_form_kwargs()
+        kwargs = super(EditBaseDesign, self).get_form_kwargs()
         kwargs.update({'write_up': self.write_up, 'article_unit': self.article_unit})
         return kwargs
 
@@ -101,7 +115,7 @@ class EditIndependentArticle(UserPublicationMixin, TemplateResponseMixin, BaseUp
         save_title = getattr(self, method_name)
         save_title(form)
         base_design = form.save(commit=False)
-        if self.request.POST['save_with_revision']:
+        if self.request.POST.get('save_with_revision'):
             base_design.save_with_revision(user=self.contributor, title=form.cleaned_data['revision_history_title'])
         else:
             base_design.save()
@@ -181,18 +195,16 @@ class EditIndependentArticle(UserPublicationMixin, TemplateResponseMixin, BaseUp
 #         pass
 
 
-class CollectionUnitView(UserPublicationMixin, TemplateResponseMixin, ModelFormMixin, View):
+class CollectionUnitView(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, ModelFormMixin, View):
     template_name = "write_up/collection_unit_list.html"
     model = CollectionUnit
     form_class = CollectionUnitForm
     write_up = None
-    contributor = None
     chapters = None
 
     def get_write_up(self):
         if self.write_up:
             return self.write_up
-        self.contributor = self.kwargs.get('contributor')
         return self.contributor.write_up
 
     def get(self, request, *args, **kwargs):
