@@ -271,6 +271,21 @@ class BaseDesign(models.Model):
         RevisionHistory.objects.create(user=user, parent=self, title=title, text=self.text)
         super(BaseDesign, self).save(*args, **kwargs)
 
+    def autosave_with_revision(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        try:
+            last_entry = RevisionHistory.objects.order_by('-create_time').defer('text') \
+                .filter(parent=self,
+                        title__startswith='AUTOSAVE')[0]
+        except IndexError:
+            title = 'AUTOSAVE-' + str(datetime.now())
+            RevisionHistory.objects.create(user=user, parent=self, title=title, text=self.text)
+        else:
+            last_entry.title = 'AUTOSAVE-' + str(datetime.now())
+            last_entry.text = self.text
+            last_entry.save()
+        super(BaseDesign, self).save(*args, **kwargs)
+
     def __unicode__(self):
         return str(self.id)
 
@@ -369,7 +384,7 @@ class GroupWritingText(models.Model):
         return self.article
 
 
-class RevisionHistory(models.Model):  # TODO: handle same session saves in same entry
+class RevisionHistory(models.Model):
     """
     Stores textual revision history for BaseDesign model.
     Sequence of revision is determined by update_time.

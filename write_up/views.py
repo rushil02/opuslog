@@ -2,7 +2,7 @@ import abc
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import SuspiciousOperation
-from django.http.response import HttpResponseRedirect, HttpResponseForbidden
+from django.http.response import HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from django.views.generic.base import TemplateResponseMixin, View
 from django.views.generic.edit import BaseCreateView, BaseUpdateView, ModelFormMixin
 
@@ -117,9 +117,10 @@ class EditBaseDesign(UserPublicationMixin, WriteupPermissionMixin, TemplateRespo
         base_design = form.save(commit=False)
         if self.request.POST.get('save_with_revision'):
             base_design.save_with_revision(user=self.contributor, title=form.cleaned_data['revision_history_title'])
+            return HttpResponseRedirect(self.get_success_url())
         else:
-            base_design.save()
-        return HttpResponseRedirect(self.get_success_url())
+            base_design.autosave_with_revision(user=self.contributor)
+            return JsonResponse({"success": True})
 
     def save_title_for_I(self, form):
         if form.cleaned_data['title'] != self.write_up.title:
@@ -256,4 +257,4 @@ class CollectionUnitView(UserPublicationMixin, WriteupPermissionMixin, TemplateR
         context.update({"queryset": self.chapters, "write_up": self.write_up})
         return context
 
-# TODO: Auto-save, add_contributor, remove_contributor, edit permission
+# TODO: add_contributor, remove_contributor, edit permission
