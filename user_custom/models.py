@@ -52,6 +52,7 @@ class User(AbstractUser):
     publication_identity = models.ForeignKey("publication.Publication", null=True, blank=True)
     profile_image = models.ImageField(upload_to=get_file_path, null=True, blank=True)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    subscribers_num = models.PositiveIntegerField(default=0)
 
     write_up_votes = GenericRelation('engagement.VoteWriteUp', related_query_name='user')
     write_up_comments = GenericRelation('engagement.Comment', related_query_name='user')
@@ -66,8 +67,10 @@ class User(AbstractUser):
                                         object_id_field='request_to_object_id',
                                         related_query_name='user_received_request')
     threads = GenericRelation('messaging_system.ThreadMember', related_query_name='user')
+    created_threads = GenericRelation('messaging_system.Thread', related_query_name='user')
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='user')
     group = GenericRelation('essential.Group', related_query_name='user')
+    activity = GenericRelation('admin_custom.ActivityLog', related_query_name='user')
 
     def get_full_name(self):
         super(User, self).get_full_name()

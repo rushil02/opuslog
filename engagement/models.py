@@ -41,7 +41,7 @@ class VoteWriteUp(Engagement):
     vote_type -> False:DownVote, True:UpVote
     """
 
-    vote_type = models.BooleanField(default=True)
+    vote_type = models.NullBooleanField(default=True)
     write_up = models.ForeignKey('write_up.WriteUp', on_delete=models.CASCADE)
     validation = models.NullBooleanField(null=True, default=None)  # TODO: discuss feasibility
 
@@ -64,7 +64,7 @@ class Comment(Engagement):
     down_votes = models.PositiveIntegerField(default=0)
     replies_num = models.PositiveSmallIntegerField(default=0)
     reply_to = models.ForeignKey("self", null=True, blank=True)
-    delete_request = models.BooleanField(default=False)
+    delete_flag = models.BooleanField(default=False)
 
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='comment')
 
@@ -101,6 +101,7 @@ class Subscriber(Engagement):
                                        related_name='subscribed')
     object_id_2 = models.PositiveIntegerField()
     subscribed = GenericForeignKey('content_type_2', 'object_id_2')
+    unsubscribe_flag = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ("content_type", "object_id", "content_type_2", "object_id_2",)

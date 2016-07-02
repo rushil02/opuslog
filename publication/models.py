@@ -3,8 +3,7 @@ import uuid
 import time
 import os
 
-from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericRelation
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.db import models
@@ -37,6 +36,8 @@ class Publication(models.Model):  # TODO create default group for each publicati
     """
     Defines an actor entity as Publication. Relation to any user is satisfied
     using the model 'ContributorList' with relation attribute 'users'.
+
+    created_by stores the owner of publication
     """
 
     name = models.CharField(max_length=150)
@@ -52,6 +53,8 @@ class Publication(models.Model):  # TODO create default group for each publicati
                                    through_fields=('publication', 'contributor'))
     logo = models.ImageField(upload_to=get_logo_file_path, null=True, blank=True)
     tags = models.ManyToManyField('essential.Tag')
+    subscribers_num = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
@@ -72,6 +75,7 @@ class Publication(models.Model):  # TODO create default group for each publicati
                                         object_id_field='request_to_object_id',
                                         related_query_name='publication_received_request')
     threads = GenericRelation('messaging_system.ThreadMember', related_query_name='publication')
+    created_threads = GenericRelation('messaging_system.Thread', related_query_name='publication')
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='publication')
     group = GenericRelation('essential.Group', related_query_name='publication')
 
@@ -107,9 +111,9 @@ class ContributorList(models.Model):
     """
     Every activity of publication is attached via this list and not to Publication model.
     On every new Publication creation, an entry will be created with owner set as the user.
+    'Owner' is just a display designation which can be modified by the user.
 
-    level -> Indicate just tags or designation for the user with relation to a publication. While settings
-    do not depend on it. But every tag will have a default list of settings (not implemented at db level).
+    permission -> holds all the Publication level permissions
     """
 
     contributor = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='contributed_publications')
@@ -121,6 +125,8 @@ class ContributorList(models.Model):
     permissions = models.ManyToManyField('essential.Permission', related_name='publication_permissions')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
+
+    activity = GenericRelation('admin_custom.ActivityLog', related_query_name='contributor')
 
     objects = ContributorListManager()
 
@@ -142,15 +148,3 @@ class PublicationEnvironment(models.Model):
     background = models.ImageField(upload_to=get_background_file_path, null=True, blank=True)
     update_time = models.DateTimeField(auto_now=True)
 
-
-class PublicationActionHistory(models.Model):  # TODO: use with post_save
-    """ Logs all acts by a Publication """
-    # FIXME: publication and user can be replaced with contributorlist
-    publication = models.ForeignKey('publication.Publication')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    entity = GenericForeignKey('content_type', 'object_id')
-
-    def __unicode__(self):
-        return self.publication.handler

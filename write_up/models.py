@@ -267,12 +267,12 @@ class Unit(models.Model):
     title = models.CharField(max_length=250, null=True, blank=True)
 
 
-class UnitContributor(models.Model):  # TODO: Discuss if this model is to be related to PublicationActionHistory
+class UnitContributor(models.Model):
+    # FIXME: Change usage in write up views
     """ Holds the creators for each Chapter/Article in a write up. """
 
     article = models.ForeignKey(Unit)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL)
-    publication = models.ForeignKey('publication.Publication', null=True)
+    contributor = models.ForeignKey(ContributorList)
 
 
 class CollectionUnit(models.Model):
