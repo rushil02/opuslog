@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from engagement.views import CommentFirstLevelView, CommentNestedView
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
+from user_custom.permissions import CheckUserMixin
 
 
 class GetActor(object):
@@ -19,7 +20,7 @@ class GetActor(object):
         return self.get_actor()
 
 
-class UserThreads(GetActor, ThreadView):
+class UserThreads(CheckUserMixin, GetActor, ThreadView):
     """ Implements ThreadView for User entity. """
 
     permission_classes = [IsAuthenticated]
@@ -31,7 +32,7 @@ class UserThreads(GetActor, ThreadView):
         return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
 
 
-class AddDeleteMemberToThread(GetActor, AddDeleteMemberView):
+class AddDeleteMemberToThread(CheckUserMixin, GetActor, AddDeleteMemberView):
     """ Implements AddDeleteMemberView for User entity. """
 
     permission_classes = [IsAuthenticated]
@@ -40,7 +41,7 @@ class AddDeleteMemberToThread(GetActor, AddDeleteMemberView):
         return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
 
 
-class MessageOfThread(GetActor, MessageView):
+class MessageOfThread(CheckUserMixin, GetActor, MessageView):
     """ Implements MessageView for User entity. """
 
     permission_classes = [IsAuthenticated]
@@ -52,11 +53,11 @@ class MessageOfThread(GetActor, MessageView):
         return None
 
 
-class UserCommentFirstLevel(GetActor, CommentFirstLevelView):
+class UserCommentFirstLevel(CheckUserMixin, GetActor, CommentFirstLevelView):
     """ Implements UserView for posting/fetching first level comments. """
     pass
 
 
-class UserCommentNested(GetActor, CommentNestedView):
+class UserCommentNested(CheckUserMixin, GetActor, CommentNestedView):
     """ Implements UserView for posting/fetching nested comments. """
     pass
