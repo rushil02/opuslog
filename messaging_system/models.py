@@ -6,6 +6,7 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import models
 
 
@@ -73,10 +74,15 @@ class Message(models.Model):
         return self.thread.subject
 
 
-class ThreadMember(models.Model):  # TODO: mute, change model for single user relation
+class ThreadMember(models.Model):  # TODO: change serializer and views accordingly
     """
     Acts as intermediary table for Thread and User/Publication
     Holds all the meta information for each user-thread relationship.
+
+    meta_info -> holds info unique to each user, example -
+        mute - independent to each contributor, therefore key is the
+               pk of contributor, while in case odf user mute is the
+               first key
     """
 
     thread = models.ForeignKey(Thread)
@@ -90,11 +96,11 @@ class ThreadMember(models.Model):  # TODO: mute, change model for single user re
     object_id = models.PositiveIntegerField()
     entity = GenericForeignKey('content_type', 'object_id')
     removed = models.BooleanField(default=False)
+    meta_info = JSONField()
     archive = models.BooleanField(default=False)
-    mute = models.BooleanField(default=False)
     create_time = models.DateTimeField(auto_now_add=True)
 
-    class Permissions:
+    class CustomMeta:  # TODO: Use this class everywhere
         permission_list = [
             {'name': 'Can create ThreadMember', 'code_name': 'create_ThreadMember', 'for': 'P',
              'help_text': 'Allow contributor to create ThreadMember'},
