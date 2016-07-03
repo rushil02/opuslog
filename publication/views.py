@@ -21,6 +21,11 @@ class GetActor(object):
     def get_actor_handler(self):
         return self.get_actor().handler
 
+    def get_actor_for_activity(self):
+        obb = self.get_actor().contributorlist_set.get(contributor=self.request.user)
+        print obb
+        return obb
+
 
 class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
     """ Implements ThreadView for Publication entity. """
@@ -31,7 +36,7 @@ class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
 
     def get_queryset(self):
         try:
-            return Thread.objects.filter(threadmember__publication=self.get_actor())
+            return Thread.objects.filter(threadmember__publication=self.get_actor()).prefetch_related('created_by')
         except Exception as e:
             raise SuspiciousOperation(e.message)
 

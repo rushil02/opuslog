@@ -15,6 +15,9 @@ class GetActor(object):
     def get_actor_handler(self):
         return self.get_actor().username
 
+    def get_actor_for_activity(self):
+        return self.get_actor()
+
 
 class UserThreads(GetActor, ThreadView):
     """ Implements ThreadView for User entity. """
@@ -22,10 +25,10 @@ class UserThreads(GetActor, ThreadView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Thread.objects.filter(threadmember__user=self.request.user).select_related('created_by')
+        return Thread.objects.filter(threadmember__user=self.get_actor()).prefetch_related('created_by')
 
     def get_thread_query(self, thread_id):
-        return get_object_or_404(Thread, id=thread_id, threadmember__user=self.request.user)
+        return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
 
 
 class AddDeleteMemberToThread(GetActor, AddDeleteMemberView):

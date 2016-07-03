@@ -3,7 +3,6 @@ import time
 import os
 from datetime import datetime
 
-from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.jsonb import JSONField
@@ -17,7 +16,7 @@ def get_file_path(instance, filename):
     return os.path.join(path, filename)
 
 
-class Thread(models.Model):  # FIXME: created_by changed to GFK from user -> check serializers, views etc.
+class Thread(models.Model):
     """ Thread is created with group members. """
 
     subject = models.CharField(max_length=125)
@@ -31,7 +30,7 @@ class Thread(models.Model):  # FIXME: created_by changed to GFK from user -> che
     created_by = GenericForeignKey('content_type', 'object_id')
     create_time = models.DateTimeField(auto_now_add=True)
 
-    class Permissions:
+    class CustomMeta:
         permission_list = [
             {'name': 'Can create threads', 'code_name': 'create_threads', 'for': 'P',
              'help_text': 'Allow contributor to create threads'},
@@ -54,11 +53,10 @@ class Message(models.Model):
     body = models.TextField()
     file = models.FileField(upload_to=get_file_path, null=True, blank=True)
     sender = models.ForeignKey('messaging_system.ThreadMember')
-    publication_user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True)
     sent_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
 
-    class Permissions:
+    class CustomMeta:
         permission_list = [
             {'name': 'Can create messages', 'code_name': 'create_messages', 'for': 'P',
              'help_text': 'Allow contributor to create messages'},
@@ -96,11 +94,11 @@ class ThreadMember(models.Model):  # TODO: change serializer and views according
     object_id = models.PositiveIntegerField()
     entity = GenericForeignKey('content_type', 'object_id')
     removed = models.BooleanField(default=False)
-    meta_info = JSONField()
+    meta_info = JSONField(null=True, blank=True)
     archive = models.BooleanField(default=False)
     create_time = models.DateTimeField(auto_now_add=True)
 
-    class CustomMeta:  # TODO: Use this class everywhere
+    class CustomMeta:
         permission_list = [
             {'name': 'Can create ThreadMember', 'code_name': 'create_ThreadMember', 'for': 'P',
              'help_text': 'Allow contributor to create ThreadMember'},
