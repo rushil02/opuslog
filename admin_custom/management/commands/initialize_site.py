@@ -32,7 +32,7 @@ def create_permissions():
 
     for model in apps.get_models():
         try:
-            permissions = model.Permissions.permission_list
+            permissions = model.CustomMeta.permission_list
         except Exception:
             continue
         else:
@@ -41,7 +41,7 @@ def create_permissions():
                 Permission.objects.get_or_create(
                     name=perm.get('name'),
                     code_name=perm.get('code_name'),
-                    permission_for=perm.get('for', 'B'),
+                    permission_type=perm.get('for', 'P'),
                     help_text=perm.get('help_text', None),
                     content_type=content_type
                 )

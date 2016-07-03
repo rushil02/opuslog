@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.jsonb import JSONField
@@ -18,9 +19,9 @@ class NotificationManager(models.Manager):
         notifications are fetched from db
         """
 
-        notified = self.get_queryset().filter(user=user, notified=True)[:5]
-        not_notified = self.get_queryset().filter(user=user, notified=False)
-        return not_notified
+        old = self.get_queryset().filter(user=user, notified=True)[:5]
+        new = self.get_queryset().filter(user=user, notified=False)
+        return new
 
     def get_all_notification(self, user):
         """
@@ -30,32 +31,68 @@ class NotificationManager(models.Manager):
 
         return self.get_queryset().filter(user=user)
 
-    def notify(self, user=None, write_up=None, notification_type=None):  # TODO: set json data info scheme
+    def create_new_notification(self, user, notification_type, template_key, write_up=None, **kwargs):
+        context = {
+            'image': kwargs.pop('image_url', self.get_default_image()),
+            'level': kwargs.pop('level', 'info'),
+            'redirect-url': kwargs.pop('redirect_url', None),
+        }
+        data = {
+            'actor': kwargs.pop('actor_handler', None),
+            'publication': kwargs.pop('publication', None),
+            'acted-on': kwargs.pop('acted_on', None),
+            'extra': kwargs,
+        }
+
+        notification = Notification(user=user,
+                                    write_up=write_up,
+                                    data=data,
+                                    context=context,
+                                    notification_type=notification_type)
+
+        return notification.save(template_key=template_key, verbose=kwargs.get('verbose', None))
+
+    def notify(self, user, notification_type, write_up=None, **kwargs):
         """
         Call this method to save new notification.
         Checks if a similar notification already exists then increases the
         counter, else create a new entry.
         """
 
-        if user and write_up and notification_type:
-            try:
-                notification = self.get_queryset().get(user=user,
-                                                       write_up=write_up,
-                                                       notification_type=notification_type,
-                                                       notified=False)
-            except Notification.DoesNotExist:
-                self.create(user=user,
-                            write_up=write_up,
-                            data={},
-                            notification_type=notification_type)
+        if user and notification_type:
+            if isinstance(user, get_user_model()):
+                self._notify(user, notification_type, write_up, **kwargs)
             else:
-                notification.add_on_actor_count += 1
-                notification.save()
+                contributors = user.get_all_contributors_as_users_with_permission(['receive_Notification'])
+                for publication_user in contributors:
+                    self._notify(publication_user.contributor, notification_type, write_up, **kwargs)
+
         else:
             raise AssertionError("Invalid arguments - None type arguments")
 
+    def _notify(self, user, notification_type, write_up=None, **kwargs):
+        template_key = kwargs.pop('template_key', 'many')
+        try:
+            if template_key == 'single':
+                raise Notification.DoesNotExist
+            notification = self.get_queryset().get(user=user,
+                                                   write_up=write_up,
+                                                   notification_type=notification_type,
+                                                   notified=False)
+        except Notification.DoesNotExist:
+            if template_key == 'many':
+                template_key = 'single'
+            self.create_new_notification(user, notification_type, template_key, write_up, **kwargs)
+        else:
+            notification.add_on_actor_count += 1
+            notification.save(template_key=template_key, verbose=kwargs.get('verbose', None))
 
-class Notification(models.Model):  # TODO: make notification system more dumb
+    @staticmethod
+    def get_default_image():
+        return ""
+
+
+class Notification(models.Model):
     """
     Stores User related Notifications.
     Publication Notification are stored by referring settings for every
@@ -66,7 +103,7 @@ class Notification(models.Model):  # TODO: make notification system more dumb
 
     JSON format -> for each notification data
 
-    {'actor-image': '<image-url>', 'actor': 'actor-name',
+    {'image': '<image-url>', 'actor': 'actor-handler',
     'publication': 'True/False', 'contributor': 'True/False',
     'acted-on': 'writ-up name', 'level': 'success/info/warning/danger',
     'redirect-url': '<url>'}
@@ -87,26 +124,100 @@ class Notification(models.Model):  # TODO: make notification system more dumb
     """
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    write_up = models.ForeignKey('write_up.WriteUp', on_delete=models.CASCADE)
-    CHOICE = (('CO', 'Comment'),
-              ('CR', 'Comment Reply'),
-              ('CT', 'Comment Tagged'),
-              ('UC', 'UpVote Comment'),
-              ('DC', 'DownVote Comment'),
-              ('UW', 'UpVote Write up'),
-              ('DW', 'DownVote Write up'),
-              )
+    write_up = models.ForeignKey('write_up.WriteUp', null=True, blank=True)
+
+    CHOICE = (
+        ('CO', 'Comment'),
+        ('CR', 'Comment Reply'),
+        ('CT', 'Comment Tagged'),
+        ('UC', 'UpVote Comment'),
+        ('DC', 'DownVote Comment'),
+        ('UW', 'UpVote Write up'),
+        ('DW', 'DownVote Write up'),
+    )
+    verbose_name = {
+        'CO': {'single':
+                   {'template': '{} commented on your creation {}',
+                    'args': [{'data': 'actor'}, 'write_up']
+                    },
+               'many': {'template': '{} and {} others commented on your creation {}',
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']
+                        }
+               },
+        'CR': {'single':
+                   {'template': '{} replied to your comment on {}',
+                    'args': [{'data': 'actor'}, 'write_up']},
+               'many':
+                   {'template': '{} and {} others replied to your comment on {}',
+                    'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+               },
+        'CT': {'single':
+                   {'template': '{} tagged you in a comment on {}',
+                    'args': [{'data': 'actor'}, 'write_up']},
+               },
+        'UC': {'single':
+                   {"template": '{} up voted your comment on {}',
+                    'args': [{'data': 'actor'}, 'write_up']},
+               'many': {'template': '{} and {} others up voted your comment on {}',
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+               },
+        'DC': {'single':
+                   {'template': '{} down voted your comment on {}',
+                    'args': [{'data': 'actor'}, 'write_up']},
+               'many': {'template': '{} and {} others down voted your comment on {}',
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+               },
+        'UW': {'single':
+                   {'template': '{} up voted your creation {}',
+                    'args': [{'data': 'actor'}, 'write_up']},
+               'many': {'template': '{} and {} others up voted your comment on {}',
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+               },
+        'DW': {'single':
+                   {'template': '{} down voted your creation {}',
+                    'args': [{'data': 'actor'}, 'write_up']},
+               'many': {'template': '{} and {} others down voted your creation {}',
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+               },
+    }
     notification_type = models.CharField(max_length=2, choices=CHOICE)
+
     data = JSONField()
+    context = JSONField()
     add_on_actor_count = models.PositiveSmallIntegerField(default=0)
     notified = models.BooleanField(default=False)
+    verbose = models.CharField(max_length=100, blank=True)
     update_time = models.DateTimeField(auto_now=True)
     create_time = models.DateTimeField(auto_now_add=True)
 
     objects = NotificationManager()
 
+    class CustomMeta:
+        permission_list = [
+            {'name': 'Can receive Notification', 'code_name': 'receive_Notification',
+             'help_text': 'Allow contributor to receive Notification'},
+        ]
+
     class Meta:
         ordering = ['-update_time']
+
+    def save(self, *args, **kwargs):
+        template_key = kwargs.pop('template_key', 'single')
+        verbose = kwargs.pop('verbose', None)
+        self.verbose = verbose if verbose else self.get_verbose(self.notification_type, template_key)
+        super(Notification, self).save(*args, **kwargs)
+
+    def get_verbose(self, notification_type, template_key):
+        verbose_handler = self.verbose_name[notification_type][template_key]
+        template = verbose_handler['template']
+        template_args = verbose_handler['args']
+        args = []
+        for arg in template_args:
+            if isinstance(arg, dict):
+                args.append(self.data[arg['data']])
+            else:
+                args.append(getattr(self, arg))
+        return template.format(*args)
 
 
 class Tag(models.Model):
@@ -140,6 +251,7 @@ class Group(models.Model):
         app_label='user_custom', model='user'
     )
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT)
+    object_id = models.PositiveIntegerField()
     entity = GenericForeignKey('content_type', 'object_id')
     name = models.CharField(max_length=100)
 

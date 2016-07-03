@@ -59,11 +59,11 @@ class ActivityLog(models.Model):
     LIMIT = models.Q(app_label='publication',
                      model='ContributorList') | models.Q(app_label='user_custom',
                                                          model='user')
-    content_type = models.ForeignKey(ContentType, limit_choices_to=LIMIT, null=True, blank=True)
+    content_type = models.ForeignKey(ContentType, limit_choices_to=LIMIT, null=True, blank=True, related_name='actor')
     object_id = models.PositiveIntegerField()
     actor = GenericForeignKey('content_type', 'object_id')
 
-    content_type2 = models.ForeignKey(ContentType, null=True, blank=True)
+    content_type2 = models.ForeignKey(ContentType, null=True, blank=True, related_name='entity')
     object_id2 = models.PositiveIntegerField(null=True, blank=True)
     entity = GenericForeignKey('content_type2', 'object_id2')
 

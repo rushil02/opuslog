@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from engagement.models import Comment
 from engagement.serializers import CommentSerializer
+from essential.tasks import notify_async
 from write_up.models import WriteUp
 
 
@@ -34,11 +35,24 @@ class CommentFirstLevelView(ListAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save(write_up=self.write_up, actor=self.get_actor(), reply_to=self.reply_to)
-        obj.process_comment_async()
+        owner = self.write_up.get_owner()
+        notify_async.delay(
+            user_object_id=owner.object_id,
+            user_content_type=owner.content_type.id,
+            notification_type='CO',
+            write_up_id=self.write_up.id,
+            redirect_url="bcbc",
+            actor_handler=self.get_actor_handler()
+        )
+        obj.process_comment_async(actor_handler=self.get_actor_handler())
         return Response(serializer.data)
 
     @abc.abstractmethod
     def get_actor(self):
+        raise NotImplementedError("Override in subclass")
+
+    @abc.abstractmethod
+    def get_actor_handler(self):
         raise NotImplementedError("Override in subclass")
 
     def validate(self):
@@ -64,7 +78,7 @@ class CommentNestedView(CommentFirstLevelView):
     def delete(self, request, *args, **kwargs):
         self.validate()
         comment = self.reply_to
-        comment.delete_request = True
+        comment.delete_flag = True
         comment.save()
         serializer = self.get_serializer(comment)
         return Response(serializer.data)

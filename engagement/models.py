@@ -68,8 +68,8 @@ class Comment(Engagement):
 
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='comment')
 
-    def process_comment_async(self):
-        process_comment.delay(self.id)
+    def process_comment_async(self, actor_handler):
+        process_comment.delay(self.id, actor_handler)
 
 
 class VoteComment(Engagement):

@@ -5,7 +5,6 @@ import os
 
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.urlresolvers import reverse
-from django.db.models import Q
 from django.db import models
 from django.conf import settings
 
@@ -87,13 +86,25 @@ class Publication(models.Model):  # TODO create default group for each publicati
     def set_administrator(self, user):
         return ContributorList.objects.create(contributer=user, publication=self, level='A')
 
+    def get_handler(self):
+        return self.handler
+
     def get_handler_url(self):
         return reverse('publication:publication_details', kwargs={'publication_handler': self.handler})
 
+    def get_all_contributors_as_users_with_permission(self, permission_list):
+        return self.contributorlist_set.get_all_contributors_with_permission(permission_list)
+
 
 class ContributorListQuerySet(models.QuerySet):
-    def permission(self, acc_perm_code):
-        return self.filter(Q(permissions__code_name=acc_perm_code) | Q(level='C'))
+    def permission(self, permission_list):
+        permission_qs = self
+        for permission in permission_list:
+            permission_qs = permission_qs.filter(permissions__code_name=permission)
+        return permission_qs
+
+    # def owner(self):
+    #     return self.filter(publication__created_by=F('contributor'))
 
     def for_publication(self, publication):
         return self.get(publication=publication)
@@ -105,6 +116,9 @@ class ContributorListManager(models.Manager):
 
     def get_contributor_for_publication_with_perm(self, publication, acc_perm_code):
         return self.get_queryset().permission(acc_perm_code).for_publication(publication)
+
+    def get_all_contributors_with_permission(self, permission_list):
+        return self.get_queryset().permission(permission_list).select_related('contributor')
 
 
 class ContributorList(models.Model):
@@ -147,4 +161,3 @@ class PublicationEnvironment(models.Model):
     theme = models.CharField(max_length=1, choices=CHOICE)
     background = models.ImageField(upload_to=get_background_file_path, null=True, blank=True)
     update_time = models.DateTimeField(auto_now=True)
-

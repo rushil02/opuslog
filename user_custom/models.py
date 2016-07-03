@@ -86,6 +86,9 @@ class User(AbstractUser):
         else:
             return writeup_contributor.write_up
 
+    def get_handler(self):
+        return self.username
+
     def get_handler_url(self):
         return reverse('user_custom:user_details', kwargs={'user_handler': self.username})
 

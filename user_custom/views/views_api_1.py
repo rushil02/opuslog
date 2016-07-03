@@ -12,6 +12,9 @@ class GetActor(object):
     def get_actor(self):
         return self.request.user
 
+    def get_actor_handler(self):
+        return self.get_actor().username
+
 
 class UserThreads(GetActor, ThreadView):
     """ Implements ThreadView for User entity. """

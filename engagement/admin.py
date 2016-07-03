@@ -4,7 +4,7 @@ from engagement.models import VoteWriteUp, Comment, VoteComment, Subscriber
 
 
 class EngagementAdmin(admin.ModelAdmin):
-    list_display = ('publication_user', 'content_type', 'object_id', 'actor', 'timestamp')
+    list_display = ('content_type', 'object_id', 'actor', 'timestamp')
 
     def get_readonly_fields(self, request, obj=None):
         if request.user.is_superuser:
@@ -31,7 +31,7 @@ class VoteWriteUpAdmin(EngagementAdmin):
 
 
 class CommentAdmin(EngagementAdmin):
-    list_display = ('comment_text', 'write_up', 'reply_to', 'delete_request') + EngagementAdmin.list_display
+    list_display = ('comment_text', 'write_up', 'reply_to', 'delete_flag') + EngagementAdmin.list_display
 
 
 class VoteCommentAdmin(EngagementAdmin):

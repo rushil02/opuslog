@@ -1,7 +1,6 @@
 import re
 
 from django.contrib.auth import get_user_model
-
 from django.db.models.expressions import F
 
 from Opuslog.celery import app
@@ -9,7 +8,7 @@ from essential.models import Notification
 
 
 @app.task(name='post_process_comment')
-def process_comment(comment_id):
+def process_comment(comment_id, actor_handler):
     # Get object
     comment = getattr(__import__('engagement.models', fromlist=['Comment']), 'Comment').objects.get(id=comment_id)
 
@@ -27,4 +26,7 @@ def process_comment(comment_id):
             pass
         else:
             if not user == comment.actor:
-                Notification.objects.notify(user=user, write_up=comment.write_up, notification_type='CT')
+                Notification.objects.notify(
+                    user=user, write_up=comment.write_up, notification_type='CT', actor_handler=actor_handler,
+                    template_key='single'
+                )

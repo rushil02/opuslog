@@ -18,6 +18,9 @@ class GetActor(object):
         else:
             raise SuspiciousOperation("No object found")
 
+    def get_actor_handler(self):
+        return self.get_actor().handler
+
 
 class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
     """ Implements ThreadView for Publication entity. """

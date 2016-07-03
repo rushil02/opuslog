@@ -14,5 +14,5 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'timestamp', 'member', 'comment_text', 'up_votes', 'down_votes', 'replies_num',
-                  'delete_request')
+                  'delete_flag')
         read_only_fields = ('up_votes', 'down_votes', 'replies_num')

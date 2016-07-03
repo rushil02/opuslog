@@ -1,4 +1,8 @@
+from django.contrib.contenttypes.models import ContentType
+
+from essential.models import Notification
 from write_up.models import WriteUp
+from Opuslog.celery import app
 
 
 def validate():
@@ -17,3 +21,17 @@ class ValidateWriteUpEngagement(object):
 
     def __init__(self):
         write_ups = self.get_write_ups()
+
+
+@app.task(name='generate_async_notification')
+def notify_async(user_object_id, user_content_type, notification_type, write_up_id=None, **kwargs):
+    user = ContentType.objects.get_for_id(user_content_type).get_object_for_this_type(pk=user_object_id)
+    if user.get_handler() == kwargs.get('actor_handler'):
+        pass
+
+    write_up = None
+    if write_up_id:
+        write_up = getattr(__import__('write_up.models', fromlist=['WriteUp']), 'WriteUp').objects.get(id=write_up_id)
+    Notification.objects.notify(
+        user=user, notification_type=notification_type, write_up=write_up, **kwargs
+    )
