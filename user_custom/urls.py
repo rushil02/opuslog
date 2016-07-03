@@ -1,11 +1,11 @@
 from django.conf.urls import url
 
-from user_custom.views.views import MainView, CustomLoginView, user_page
 from user_custom.views.views_api_1 import (
     UserCommentFirstLevel, UserCommentNested, UserThreads, AddDeleteMemberToThread, MessageOfThread
 )
-from user_custom.views import MainView, CustomLoginView, CreateUserWriteUpView, edit_article_view, edit_write_up_view, \
-    collection_unit_view, edit_collection_article_view
+from user_custom.views.views import MainView, CustomLoginView, CreateUserWriteUpView, edit_article_view, \
+    edit_write_up_view, \
+    collection_unit_view, edit_collection_article_view, user_page
 
 urlpatterns = [
     url(r'^user_details/(?P<user_handler>[^/]+)/$', user_page, name='user_details'),
