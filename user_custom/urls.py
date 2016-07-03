@@ -4,12 +4,20 @@ from user_custom.views.views import MainView, CustomLoginView, user_page
 from user_custom.views.views_api_1 import (
     UserCommentFirstLevel, UserCommentNested, UserThreads, AddDeleteMemberToThread, MessageOfThread
 )
+from user_custom.views import MainView, CustomLoginView, CreateUserWriteUpView, edit_article_view, edit_write_up_view, \
+    collection_unit_view, edit_collection_article_view
 
 urlpatterns = [
     url(r'^user_details/(?P<user_handler>[^/]+)/$', user_page, name='user_details'),
 
     url(r'^$', MainView.as_view()),  # TODO: name?
     url(r'^login/$', CustomLoginView.as_view(), name='custom_login'),
+    url(r'^create_write_up/$', CreateUserWriteUpView.as_view(), name='create_write_up'),
+    url(r'^edit_article/(?P<write_up_uuid>[^/]+)/$', edit_article_view, name='edit_independent_article'),
+    url(r'^edit_write_up/(?P<write_up_uuid>[^/]+)/$', edit_write_up_view, name='edit_user_write_up'),
+    url(r'^edit_magazine_chapters/(?P<write_up_uuid>[^/]+)/$', collection_unit_view, name='edit_magazine_chapters'),
+    url(r'^edit_article/(?P<write_up_uuid>[^/]+)/(?P<chapter_index>[0-9]+)/$', edit_collection_article_view,
+        name='edit_magazine_article'),
 
     url(r'^threads/$', UserThreads.as_view(), name='all_threads'),
     url(r'^threads/(?P<thread_id>[^/]+)/$', UserThreads.as_view(), name='update_thread'),

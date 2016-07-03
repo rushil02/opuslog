@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+<h2>Chapters</h2>
+{% for chapter in queryset %}
+    <a href="{% url 'user_custom:edit_magazine_article' write_up.uuid forloop.counter %}">
+        <h3>{{ chapter.article.title }}</h3></a>
+{% endfor %}
+
+<form method="post" action="">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Submit">
+</form>
+</body>
+</html>

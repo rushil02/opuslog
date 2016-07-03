@@ -11,7 +11,9 @@ from django.views.generic import View
 
 from admin_custom.decorators import has_write_up_perm
 from user_custom.forms import CustomLoginForm, CustomSignupForm
-from write_up.forms import WriteUpForm, AddContributorForm, EditPermissionFormSet
+from write_up.forms import AddContributorForm, EditPermissionFormSet
+from write_up.views import CreateWriteUpView, EditWriteUpView, CollectionUnitView, \
+    EditBaseDesign
 
 
 def check_user(request):
@@ -68,82 +70,6 @@ def user_acc(request):
 
 
 @login_required
-def create_writeup(request):
-    user = request.user
-    template_name = ""
-
-    form = WriteUpForm(request.POST or None)
-
-    context = {
-        "form": form
-    }
-
-    if request.POST:
-        if form.is_valid():
-            write_up = form.save()
-            write_up.set_owner(user)
-            write_up.create_write_up_handler()
-            success_redirect_url = write_up.get_handler_redirect_url()
-            return redirect(success_redirect_url)
-        else:
-            return render(request, template_name, context)
-    else:
-        return render(request, template_name, context)
-
-
-# @has_write_up_perm(acc_perm_code='CAN_EDIT', collection_type='B')
-# def create_chapter_view(request, *args, **kwargs):
-#     contributor = kwargs.get('contributor')
-#     write_up = contributor.write_up
-#     template_name = ""
-#     success_redirect_url = ""
-#
-#     form = BookChapterForm(request.POST or None)
-#     context = {
-#         "form": form
-#     }
-#
-#     if request.POST:
-#         if form.is_valid():
-#             book_chapter = form.save(commit=False)
-#             base_design = BaseDesign.objects.create()
-#             book_chapter.book = write_up
-#             book_chapter.chapter = base_design
-#             book_chapter.relationship = 'I'
-#             book_chapter.save()
-#             return redirect(success_redirect_url)
-#
-#     chapters = write_up.get_all_chapters()
-#     context.update({"chapters": chapters})
-#     return render(request, template_name, context)
-
-
-@login_required
-@has_write_up_perm(acc_perm_code='CAN_EDIT')  # fixme: add perm code to permission table
-def edit_write_up(request, *args, **kwargs):
-    template_name = ""
-    redirect_success_url = ""
-    contributor = kwargs.get('contributor')
-    try:
-        write_up = contributor.write_up
-    except ObjectDoesNotExist:
-        raise SuspiciousOperation()
-    else:
-        form = WriteUpForm(request.POST or None, instance=write_up)
-        context = {
-            "form": form
-        }
-        if request.POST:
-            if form.is_valid():
-                form.save()
-                return redirect(redirect_success_url)
-            else:
-                return render(request, template_name, context)
-        else:
-            return render(request, template_name, context)
-
-
-@login_required
 def add_write_up_contributor(request, write_up_uuid):
     user = request.user
     form = AddContributorForm(request.POST or None)
@@ -193,8 +119,9 @@ def edit_permission_view(request, write_up_uuid):  # FIXME: Change permission us
     else:
         contributors = write_up.get_all_contributors()
         formset = EditPermissionFormSet(request.POST or None,
-                                        initial=[{'username': contributor, 'permission_level': contributor.permission_level}
-                                                 for contributor in contributors])
+                                        initial=[
+                                            {'username': contributor, 'permission_level': contributor.permission_level}
+                                            for contributor in contributors])
         context = {
             "formset": formset
         }
@@ -224,3 +151,50 @@ def alter_identity(request):  # TODO
 def user_page(request, user_handler):
     # TODO: redirect to this page when requested for a creator's detail page
     return HttpResponse("You reached on some other users page {%s}" % user_handler)
+
+
+class UserViewMixin(object):
+    def get_user(self):
+        return self.request.user
+
+    def get_publication_user(self):
+        return None
+
+    def get_success_url_prefix(self):
+        return ""
+
+
+@method_decorator(login_required, name='dispatch')
+class CreateUserWriteUpView(UserViewMixin, CreateWriteUpView):
+    pass
+
+
+class EditUserWriteUpView(UserViewMixin, EditWriteUpView):
+    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+
+
+edit_write_up_view = login_required()(EditUserWriteUpView.as_view())
+
+
+class EditUserIndependentArticleView(UserViewMixin, EditBaseDesign):
+    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+    collection_type = 'I'
+
+
+edit_article_view = login_required()(EditUserIndependentArticleView.as_view())
+
+
+class UserCollectionUnitView(UserViewMixin, CollectionUnitView):
+    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+    collection_type = 'M'
+
+
+collection_unit_view = login_required()(UserCollectionUnitView.as_view())
+
+
+class EditUserCollectionArticleView(UserViewMixin, EditBaseDesign):
+    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+    collection_type = 'M'
+
+
+edit_collection_article_view = login_required()(EditUserCollectionArticleView.as_view())

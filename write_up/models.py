@@ -45,7 +45,6 @@ from datetime import datetime
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import Q
 from django.conf import settings
 
 
@@ -126,10 +125,10 @@ class WriteUp(models.Model):
     def get_all_contributors(self):  # FIXME: exclude removed contributors
         return self.contributorlist_set.all()
 
-    def create_write_up_handler(self):
+    def create_write_up_handler(self, user):
         method_name = 'create_' + self.collection_type.lower()
         method = getattr(self, method_name)
-        method()
+        method(user)
 
     def get_handler_redirect_url(self):
         """
@@ -142,32 +141,39 @@ class WriteUp(models.Model):
 
         redirect_url = {
             'B': '',
-            'M': '',
-            'I': '',
+            'M': '/edit_magazine_chapters/',
+            'I': '/edit_article/',
             'L': '',
             'G': '',
         }
         return redirect_url.get(self.collection_type)
 
-    def create_b(self):
+    def create_b(self, user):
         pass
 
-    def create_m(self):
+    def create_m(self, user):
         pass
 
-    def create_i(self):
+    def create_i(self, user):
         base_design = BaseDesign.objects.create()
-        Unit.objects.create(write_up=self, text=base_design)
+        unit = Unit.objects.create(write_up=self, text=base_design)
+        unit.add_unit_contributor(user)
 
-    def create_l(self):
+    def create_l(self, user):
         base_design = BaseDesign.objects.create()
         LiveWriting.objects.create(write_up=self, text=base_design)
 
-    def create_g(self):
+    def create_g(self, user):
         GroupWriting.objects.create(write_up=self)
 
     def get_all_chapters(self):
-        return self.bookchapter_set.all()
+        return self.collectionunit_set.all().select_related('article').order_by('sort_id')
+
+    def get_owner(self):
+        return self.contributorlist_set.get(is_owner=True)
+
+    def get_chapter_from_index(self, i):
+        return self.get_all_chapters().select_related('article__text')[i - 1]
 
 
 class WriteupProfile(models.Model):
@@ -179,8 +185,16 @@ class WriteupProfile(models.Model):
 
 
 class ContributorListQuerySet(models.QuerySet):
-    def permission(self, acc_perm_code):
-        return self.filter(Q(permissions__code_name=acc_perm_code) | Q(is_owner=True))
+    def permission(self, permission_list):
+        permission_qs = self
+        owner_qs = self
+        for permission in permission_list:
+            permission_qs = permission_qs.filter(permissions__code_name=permission)
+        qs = permission_qs | owner_qs.owner()
+        return qs
+
+    def owner(self):
+        return self.filter(is_owner=True)
 
     def for_write_up(self, write_up_uuid, collection_type=None):
         if collection_type:
@@ -194,12 +208,15 @@ class ContributorListManager(models.Manager):
     def get_queryset(self):
         return ContributorListQuerySet(self.model, using=self._db)
 
-    def get_contributor_for_writeup_with_perm(self, write_up_uuid, acc_perm_code, collection_type=None):
-        return self.get_queryset().permission(acc_perm_code).for_write_up(write_up_uuid, collection_type)
+    def get_contributor_for_writeup_with_perm(self, write_up_uuid, permission_list, collection_type=None):
+        return self.get_queryset().permission(permission_list).for_write_up(write_up_uuid, collection_type)
 
     def create_contributor(self, contributor, write_up, is_owner=False, share_XP=None, share_money=None):
         return self.get_queryset().create(contributor=contributor, write_up=write_up, is_owner=is_owner,
                                           share_XP=share_XP, share_money=share_money)
+
+    def get_owner_for_permission(self, write_up_uuid, collection_type=None):
+        return self.get_queryset().owner().for_write_up(write_up_uuid, collection_type)
 
 
 # TODO: create celery task to validate and update per write_up engagement based XP/money for user
@@ -250,9 +267,25 @@ class BaseDesign(models.Model):
     text = models.TextField()
     update_time = models.DateTimeField(auto_now=True)
 
-    def save_with_rev(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # TODO: send user
-        RevisionHistory.objects.create(user=user, parent=self, title=self.title, text=self.text)
+    def save_with_revision(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        title = kwargs.pop('title', None)
+        RevisionHistory.objects.create(user=user, parent=self, title=title, text=self.text)
+        super(BaseDesign, self).save(*args, **kwargs)
+
+    def autosave_with_revision(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        try:
+            last_entry = RevisionHistory.objects.order_by('-create_time').defer('text') \
+                .filter(parent=self,
+                        title__startswith='AUTOSAVE')[0]
+        except IndexError:
+            title = 'AUTOSAVE-' + str(datetime.now())
+            RevisionHistory.objects.create(user=user, parent=self, title=title, text=self.text)
+        else:
+            last_entry.title = 'AUTOSAVE-' + str(datetime.now())
+            last_entry.text = self.text
+            last_entry.save()
         super(BaseDesign, self).save(*args, **kwargs)
 
     def __unicode__(self):
@@ -265,6 +298,9 @@ class Unit(models.Model):
     write_up = models.OneToOneField(WriteUp, null=True)
     text = models.OneToOneField(BaseDesign)
     title = models.CharField(max_length=250, null=True, blank=True)
+
+    def add_unit_contributor(self, user, publication=None):
+        return self.unitcontributor_set.create(user=user, publication=publication)
 
 
 class UnitContributor(models.Model):
@@ -350,7 +386,7 @@ class GroupWritingText(models.Model):
         return self.article
 
 
-class RevisionHistory(models.Model):  # TODO: handle same session saves in same entry
+class RevisionHistory(models.Model):
     """
     Stores textual revision history for BaseDesign model.
     Sequence of revision is determined by update_time.
