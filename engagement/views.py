@@ -12,7 +12,7 @@ from write_up.models import WriteUp
 
 
 class CommentFirstLevelView(ListAPIView):
-    """"""
+    """ get or create first level comments """
 
     serializer_class = CommentSerializer
 
@@ -60,7 +60,7 @@ class CommentFirstLevelView(ListAPIView):
 
 
 class CommentNestedView(CommentFirstLevelView):
-    """"""
+    """ get or create second level comments """
 
     def get_comment(self):
         comment_id = self.kwargs.get('comment_id', None)
@@ -75,6 +75,10 @@ class CommentNestedView(CommentFirstLevelView):
         if not self.write_up.comment_set.filter(pk=self.reply_to.pk).exists():
             raise SuspiciousOperation("No object found.")
 
+
+class DeleteComment(CommentNestedView):
+    """ delete any level comment """
+
     def delete(self, request, *args, **kwargs):
         self.validate()
         comment = self.reply_to
@@ -82,5 +86,3 @@ class CommentNestedView(CommentFirstLevelView):
         comment.save()
         serializer = self.get_serializer(comment)
         return Response(serializer.data)
-
-# class DeleteComment

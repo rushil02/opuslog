@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 
-from engagement.views import CommentFirstLevelView, CommentNestedView
+from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteComment
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 from user_custom.permissions import CheckUserMixin
@@ -60,4 +60,9 @@ class UserCommentFirstLevel(CheckUserMixin, GetActor, CommentFirstLevelView):
 
 class UserCommentNested(CheckUserMixin, GetActor, CommentNestedView):
     """ Implements UserView for posting/fetching nested comments. """
+    pass
+
+
+class UserCommentDelete(CheckUserMixin, GetActor, DeleteComment):
+    """ Implements UserView for deleting any comment. """
     pass

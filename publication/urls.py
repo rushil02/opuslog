@@ -2,8 +2,8 @@ from django.conf.urls import url
 
 from publication.views import (
     PublicationThreads, AddDeleteMemberToThread, MessageOfThread, publication_page, PublicationCommentNested,
-    PublicationCommentFirstLevel
-)
+    PublicationCommentFirstLevel,
+    PublicationCommentDelete)
 
 urlpatterns = [
     url(r'^pub_details/(?P<publication_handler>[^/]+)/$', publication_page, name='publication_details'),
@@ -16,4 +16,6 @@ urlpatterns = [
     url(r'^comments/(?P<write_up_uuid>[^/]+)/$', PublicationCommentFirstLevel.as_view(), name='first_level_comments'),
     url(r'^comments/nested/(?P<write_up_uuid>[^/]+)/(?P<comment_id>[^/]+)/$', PublicationCommentNested.as_view(),
         name='nested_comments'),
+    url(r'^comments/delete/(?P<write_up_uuid>[^/]+)/(?P<comment_id>[^/]+)/$', PublicationCommentDelete.as_view(),
+        name='delete_comment'),
 ]

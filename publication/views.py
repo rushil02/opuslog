@@ -3,7 +3,7 @@ from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
 from publication.permissions import UserPublicationPermissionMixin
-from engagement.views import CommentFirstLevelView, CommentNestedView
+from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteComment
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 
@@ -79,4 +79,9 @@ class PublicationCommentFirstLevel(GetActor, CommentFirstLevelView):
 
 class PublicationCommentNested(GetActor, CommentNestedView):
     """ Implements PublicationView for posting/fetching nested comments. """
+    pass
+
+
+class PublicationCommentDelete(GetActor, DeleteComment):
+    """ Implements UserView for deleting any comment. """
     pass

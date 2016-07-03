@@ -1,8 +1,8 @@
 from django.conf.urls import url
 
 from user_custom.views.views_api_1 import (
-    UserCommentFirstLevel, UserCommentNested, UserThreads, AddDeleteMemberToThread, MessageOfThread
-)
+    UserCommentFirstLevel, UserCommentNested, UserThreads, AddDeleteMemberToThread, MessageOfThread,
+    UserCommentDelete)
 from user_custom.views.views import MainView, CustomLoginView, CreateUserWriteUpView, edit_article_view, \
     edit_write_up_view, \
     collection_unit_view, edit_collection_article_view, user_page
@@ -27,4 +27,6 @@ urlpatterns = [
     url(r'^comments/(?P<write_up_uuid>[^/]+)/$', UserCommentFirstLevel.as_view(), name='first_level_comments'),
     url(r'^comments/nested/(?P<write_up_uuid>[^/]+)/(?P<comment_id>[^/]+)/$', UserCommentNested.as_view(),
         name='nested_comments'),
+    url(r'^comments/delete/(?P<write_up_uuid>[^/]+)/(?P<comment_id>[^/]+)/$', UserCommentDelete.as_view(),
+        name='delete_comment'),
 ]
