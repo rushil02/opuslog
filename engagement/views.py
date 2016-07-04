@@ -1,13 +1,12 @@
 from django.contrib.contenttypes.models import ContentType
-
 from django.core.exceptions import SuspiciousOperation
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.response import Response
 
-from engagement.models import Comment, VoteWriteUp
-from engagement.serializers import CommentSerializer, VoteWriteUpSerializer
+from engagement.models import Comment, VoteWriteUp, Subscriber
+from engagement.serializers import CommentSerializer, VoteWriteUpSerializer, SubscriberSerializer
 from essential.tasks import notify_async
 from write_up.models import WriteUp
 
@@ -95,7 +94,6 @@ class DeleteCommentView(CommentNestedView):
 class VoteWriteupView(Mixin, GenericAPIView):
     serializer_class = VoteWriteUpSerializer
     write_up = None
-    vote_type = None
 
     def get_object(self):
         write_up_uuid = self.kwargs.get('write_up_uuid', None)
@@ -106,11 +104,14 @@ class VoteWriteupView(Mixin, GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         self.write_up = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        vote_type = serializer.validated_data.get('vote_type', None)
 
         obj, created = VoteWriteUp.objects.update_or_create(
             content_type=ContentType.objects.get_for_model(self.get_actor()),
             object_id=self.get_actor().id, write_up=self.write_up,
-            defaults={'vote_type': self.vote_type}
+            defaults={'vote_type': vote_type}
         )
 
         owner = self.write_up.get_owner()
@@ -124,19 +125,6 @@ class VoteWriteupView(Mixin, GenericAPIView):
                 actor_handler=self.get_actor_handler()
             )
         return Response(status=status.HTTP_200_OK)
-
-
-class UpVoteWriteupView(VoteWriteupView):
-    vote_type = True
-
-
-class DownVoteWriteupView(VoteWriteupView):
-    vote_type = False
-
-
-class RemoveVoteWriteupView(VoteWriteupView):
-    def post(self, request, *args, **kwargs):
-        raise Exception("Method is disabled")
 
     def delete(self, request, *args, **kwargs):
         self.write_up = self.get_object()
@@ -154,3 +142,49 @@ class RemoveVoteWriteupView(VoteWriteupView):
             obj.vote_type = None
             obj.save()
             return Response(status=status.HTTP_200_OK)
+
+
+class SubscriberView(Mixin, GenericAPIView):
+    serializer_class = SubscriberSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        subscribed = serializer.obj
+
+        obj, created = Subscriber.objects.update_or_create(
+            content_type=ContentType.objects.get_for_model(self.get_actor()),
+            object_id=self.get_actor().id, content_type_2=ContentType.objects.get_for_model(subscribed),
+            object_id_2=subscribed.id, defaults={'unsubscribe_flag': True}
+        )
+
+        # if created:  # TODO: create notification
+        #     notify_async.delay(
+        #         user_object_id=owner.object_id,
+        #         user_content_type=owner.content_type.id,
+        #         notification_type='CO',
+        #         redirect_url="bcbc",
+        #         actor_handler=self.get_actor_handler()
+        #     )
+        return Response(status=status.HTTP_200_OK)
+
+    def delete(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        subscribed = serializer.obj
+
+        obj, created = Subscriber.objects.update_or_create(
+            content_type=ContentType.objects.get_for_model(self.get_actor()),
+            object_id=self.get_actor().id, content_type_2=ContentType.objects.get_for_model(subscribed),
+            object_id_2=subscribed.id, defaults={'unsubscribe_flag': False}
+        )
+
+        # if created:
+        #     notify_async.delay(
+        #         user_object_id=owner.object_id,
+        #         user_content_type=owner.content_type.id,
+        #         notification_type='CO',
+        #         redirect_url="bcbc",
+        #         actor_handler=self.get_actor_handler()
+        #     )
+        return Response(status=status.HTTP_200_OK)

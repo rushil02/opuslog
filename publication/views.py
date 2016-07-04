@@ -3,8 +3,8 @@ from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
 from publication.permissions import UserPublicationPermissionMixin
-from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, UpVoteWriteupView, \
-    DownVoteWriteupView, RemoveVoteWriteupView
+from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
+    SubscriberView
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 
@@ -12,12 +12,12 @@ from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 class GetActor(object):
     """ For Method inherited by every Publication API class."""
 
+    actor = None
+
     def get_actor(self):
-        obj = self.request.user.publication_identity
-        if obj:
-            return obj
-        else:
-            raise SuspiciousOperation("No object found")
+        if not self.actor:
+            self.actor = self.request.user.publication_identity
+        return self.actor
 
     def get_actor_handler(self):
         return self.get_actor().handler
@@ -88,16 +88,11 @@ class PublicationCommentDelete(GetActor, DeleteCommentView):
     pass
 
 
-class PublicationUpVoteWriteup(GetActor, UpVoteWriteupView):
+class PublicationVoteWriteup(GetActor, VoteWriteupView):
     """ Implements PublicationView for up voting a writeup """
     pass
 
 
-class PublicationDownVoteWriteup(GetActor, DownVoteWriteupView):
-    """ Implements PublicationView for down voting a writeup """
-    pass
-
-
-class PublicationRemoveVoteWriteup(GetActor, RemoveVoteWriteupView):
-    """ Implements PublicationView for removing a vote on a writeup """
+class PublicationSubscriber(GetActor, SubscriberView):
+    """ Implements PublicationView for Subscribing a publication or user """
     pass

@@ -1,8 +1,8 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 
-from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, UpVoteWriteupView, \
-    DownVoteWriteupView, RemoveVoteWriteupView
+from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
+    SubscriberView
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 from user_custom.permissions import CheckUserMixin
@@ -11,8 +11,12 @@ from user_custom.permissions import CheckUserMixin
 class GetActor(object):
     """ For Method inherited by every User API class."""
 
+    actor = None
+
     def get_actor(self):
-        return self.request.user
+        if not self.actor:
+            self.actor = self.request.user
+        return self.actor
 
     def get_actor_handler(self):
         return self.get_actor().username
@@ -69,16 +73,11 @@ class UserCommentDelete(CheckUserMixin, GetActor, DeleteCommentView):
     pass
 
 
-class UserUpVoteWriteup(CheckUserMixin, GetActor, UpVoteWriteupView):
+class UserVoteWriteup(CheckUserMixin, GetActor, VoteWriteupView):
     """ Implements UserView for up voting a writeup """
     pass
 
 
-class UserDownVoteWriteup(CheckUserMixin, GetActor, DownVoteWriteupView):
-    """ Implements UserView for down voting a writeup """
-    pass
-
-
-class UserRemoveVoteWriteup(CheckUserMixin, GetActor, RemoveVoteWriteupView):
-    """ Implements UserView for removing a vote on a writeup """
+class UserSubscriber(CheckUserMixin, GetActor, SubscriberView):
+    """ Implements UserView for Subscribing a publication or user """
     pass

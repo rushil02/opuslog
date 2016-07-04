@@ -2,9 +2,8 @@ from django.conf.urls import url
 
 from publication.views import (
     PublicationThreads, AddDeleteMemberToThread, MessageOfThread, publication_page, PublicationCommentNested,
-    PublicationCommentFirstLevel,
-    PublicationCommentDelete, PublicationUpVoteWriteup, PublicationDownVoteWriteup, PublicationRemoveVoteWriteup
-)
+    PublicationCommentFirstLevel, PublicationCommentDelete, PublicationVoteWriteup,
+    PublicationSubscriber)
 
 urlpatterns = [
     url(r'^pub_details/(?P<publication_handler>[^/]+)/$', publication_page, name='publication_details'),
@@ -20,10 +19,7 @@ urlpatterns = [
     url(r'^comments/delete/(?P<write_up_uuid>[^/]+)/(?P<comment_id>[^/]+)/$', PublicationCommentDelete.as_view(),
         name='delete_comment'),
 
-    url(r'^vote/write_up/up/(?P<write_up_uuid>[^/]+)/$', PublicationUpVoteWriteup.as_view(),
-        name='up_vote_write_up'),
-    url(r'^vote/write_up/down/(?P<write_up_uuid>[^/]+)/$', PublicationDownVoteWriteup.as_view(),
-        name='up_vote_write_up'),
-    url(r'^vote/write_up/remove/(?P<write_up_uuid>[^/]+)/$', PublicationRemoveVoteWriteup.as_view(),
-        name='up_vote_write_up'),
+    url(r'^vote/write_up/(?P<write_up_uuid>[^/]+)/$', PublicationVoteWriteup.as_view(), name='vote_write_up'),
+
+    url(r'^subscribe/$', PublicationSubscriber.as_view(), name='subscribe'),
 ]
