@@ -22,7 +22,7 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ('up_votes', 'down_votes', 'replies_num')
 
 
-class VoteWriteUpSerializer(serializers.Serializer):
+class VoteSerializer(serializers.Serializer):
     vote_type = serializers.NullBooleanField()
 
 

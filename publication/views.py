@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 
 from publication.permissions import UserPublicationPermissionMixin
 from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
-    SubscriberView
+    SubscriberView, VoteCommentView
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 
@@ -89,10 +89,15 @@ class PublicationCommentDelete(GetActor, DeleteCommentView):
 
 
 class PublicationVoteWriteup(GetActor, VoteWriteupView):
-    """ Implements PublicationView for up voting a writeup """
+    """ Implements PublicationView for up/down voting a writeup, or deleting so """
     pass
 
 
 class PublicationSubscriber(GetActor, SubscriberView):
     """ Implements PublicationView for Subscribing a publication or user """
+    pass
+
+
+class PublicationVoteComment(GetActor, VoteCommentView):
+    """ Implements PublicationView for up/down voting a comment, or deleting so """
     pass

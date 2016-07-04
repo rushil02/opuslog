@@ -2,11 +2,12 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.response import Response
 
-from engagement.models import Comment, VoteWriteUp, Subscriber
-from engagement.serializers import CommentSerializer, VoteWriteUpSerializer, SubscriberSerializer
+from engagement.models import Comment, VoteWriteUp, Subscriber, VoteComment
+from engagement.serializers import CommentSerializer, VoteSerializer, SubscriberSerializer
 from essential.tasks import notify_async
 from write_up.models import WriteUp
 
@@ -82,6 +83,9 @@ class CommentNestedView(CommentFirstLevelView):
 class DeleteCommentView(CommentNestedView):
     """ delete any level comment """
 
+    def post(self, request, *args, **kwargs):
+        raise PermissionDenied("Method is disabled")
+
     def delete(self, request, *args, **kwargs):
         self.validate()
         comment = self.reply_to
@@ -92,7 +96,7 @@ class DeleteCommentView(CommentNestedView):
 
 
 class VoteWriteupView(Mixin, GenericAPIView):
-    serializer_class = VoteWriteUpSerializer
+    serializer_class = VoteSerializer
     write_up = None
 
     def get_object(self):
@@ -188,3 +192,56 @@ class SubscriberView(Mixin, GenericAPIView):
         #         actor_handler=self.get_actor_handler()
         #     )
         return Response(status=status.HTTP_200_OK)
+
+
+class VoteCommentView(Mixin, GenericAPIView):
+    serializer_class = VoteSerializer
+    comment = None
+
+    def get_object(self):
+        comment_id = self.kwargs.get('comment_id', None)
+        if comment_id:
+            return get_object_or_404(Comment, id=comment_id)
+        else:
+            raise SuspiciousOperation("No object found")
+
+    def post(self, request, *args, **kwargs):
+        self.comment = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        vote_type = serializer.validated_data.get('vote_type', None)
+
+        obj, created = VoteComment.objects.update_or_create(
+            content_type=ContentType.objects.get_for_model(self.get_actor()),
+            object_id=self.get_actor().id, comment=self.comment,
+            defaults={'vote_type': vote_type}
+        )
+
+        # owner = self.write_up.get_owner()
+        # if created:
+        #     notify_async.delay(
+        #         user_object_id=owner.object_id,
+        #         user_content_type=owner.content_type.id,
+        #         notification_type='CO',
+        #         write_up_id=self.write_up.id,
+        #         redirect_url="bcbc",
+        #         actor_handler=self.get_actor_handler()
+        #     )
+        return Response(status=status.HTTP_200_OK)
+
+    def delete(self, request, *args, **kwargs):
+        self.comment = self.get_object()
+
+        try:
+            obj = VoteComment.objects.get(
+                content_type=ContentType.objects.get_for_model(self.get_actor()),
+                object_id=self.get_actor().id, comment=self.comment
+            )
+        except VoteComment.DoesNotExist:
+            return Response(status=status.HTTP_200_OK)
+        except Exception as e:
+            pass  # TODO: activitylog
+        else:
+            obj.vote_type = None
+            obj.save()
+            return Response(status=status.HTTP_200_OK)

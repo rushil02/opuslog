@@ -2,7 +2,7 @@ from django.conf.urls import url
 
 from user_custom.views.views_api_1 import (
     UserCommentFirstLevel, UserCommentNested, UserThreads, AddDeleteMemberToThread, MessageOfThread,
-    UserCommentDelete, UserVoteWriteup, UserSubscriber)
+    UserCommentDelete, UserVoteWriteup, UserSubscriber, UserVoteComment)
 from user_custom.views.views import MainView, CustomLoginView, CreateUserWriteUpView, edit_article_view, \
     edit_write_up_view, \
     collection_unit_view, edit_collection_article_view, user_page
@@ -30,7 +30,9 @@ urlpatterns = [
     url(r'^comments/delete/(?P<write_up_uuid>[^/]+)/(?P<comment_id>[^/]+)/$', UserCommentDelete.as_view(),
         name='delete_comment'),
 
-    url(r'^vote/write_up/(?P<write_up_uuid>[^/]+)/$', UserVoteWriteup.as_view(), name='up_vote_write_up'),
+    url(r'^vote/comment/(?P<comment_id>[^/]+)/$', UserVoteComment.as_view(), name='vote_comment'),
+
+    url(r'^vote/write_up/(?P<write_up_uuid>[^/]+)/$', UserVoteWriteup.as_view(), name='vote_write_up'),
 
     url(r'^subscribe/$', UserSubscriber.as_view(), name='subscribe'),
 

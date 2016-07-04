@@ -78,7 +78,7 @@ class VoteComment(Engagement):
     vote_type -> False:DownVote, True:UpVote
     """
 
-    vote_type = models.BooleanField(default=True)
+    vote_type = models.NullBooleanField(default=True)
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
 
     class Meta:
