@@ -1,7 +1,8 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 
-from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteComment
+from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, UpVoteWriteupView, \
+    DownVoteWriteupView, RemoveVoteWriteupView
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 from user_custom.permissions import CheckUserMixin
@@ -63,6 +64,21 @@ class UserCommentNested(CheckUserMixin, GetActor, CommentNestedView):
     pass
 
 
-class UserCommentDelete(CheckUserMixin, GetActor, DeleteComment):
+class UserCommentDelete(CheckUserMixin, GetActor, DeleteCommentView):
     """ Implements UserView for deleting any comment. """
+    pass
+
+
+class UserUpVoteWriteup(CheckUserMixin, GetActor, UpVoteWriteupView):
+    """ Implements UserView for up voting a writeup """
+    pass
+
+
+class UserDownVoteWriteup(CheckUserMixin, GetActor, DownVoteWriteupView):
+    """ Implements UserView for down voting a writeup """
+    pass
+
+
+class UserRemoveVoteWriteup(CheckUserMixin, GetActor, RemoveVoteWriteupView):
+    """ Implements UserView for removing a vote on a writeup """
     pass

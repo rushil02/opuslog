@@ -3,3 +3,4 @@ urlpatterns = [
     # url(r'^comments/nested/(?P<write_up_uuid>[^/]+)/(?P<comment_id>[^/]+)/$', CommentNestedView.as_view()),
 ]
 
+# TODO: remove this file after testing

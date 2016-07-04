@@ -3,7 +3,8 @@ from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
 from publication.permissions import UserPublicationPermissionMixin
-from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteComment
+from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, UpVoteWriteupView, \
+    DownVoteWriteupView, RemoveVoteWriteupView
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
 
@@ -82,6 +83,21 @@ class PublicationCommentNested(GetActor, CommentNestedView):
     pass
 
 
-class PublicationCommentDelete(GetActor, DeleteComment):
-    """ Implements UserView for deleting any comment. """
+class PublicationCommentDelete(GetActor, DeleteCommentView):
+    """ Implements PublicationView for deleting any comment. """
+    pass
+
+
+class PublicationUpVoteWriteup(GetActor, UpVoteWriteupView):
+    """ Implements PublicationView for up voting a writeup """
+    pass
+
+
+class PublicationDownVoteWriteup(GetActor, DownVoteWriteupView):
+    """ Implements PublicationView for down voting a writeup """
+    pass
+
+
+class PublicationRemoveVoteWriteup(GetActor, RemoveVoteWriteupView):
+    """ Implements PublicationView for removing a vote on a writeup """
     pass

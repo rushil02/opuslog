@@ -1,17 +1,29 @@
-import abc
+from django.contrib.contenttypes.models import ContentType
 
 from django.core.exceptions import SuspiciousOperation
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import ListAPIView
+from rest_framework import status
+from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.response import Response
 
-from engagement.models import Comment
-from engagement.serializers import CommentSerializer
+from engagement.models import Comment, VoteWriteUp
+from engagement.serializers import CommentSerializer, VoteWriteUpSerializer
 from essential.tasks import notify_async
 from write_up.models import WriteUp
 
 
-class CommentFirstLevelView(ListAPIView):
+class Mixin(object):
+    def get_actor(self):
+        raise NotImplementedError("Override in subclass")
+
+    def get_actor_for_activity(self):
+        raise NotImplementedError("Override in subclass")
+
+    def get_actor_handler(self):
+        raise NotImplementedError("Override in subclass")
+
+
+class CommentFirstLevelView(Mixin, ListAPIView):
     """ get or create first level comments """
 
     serializer_class = CommentSerializer
@@ -47,14 +59,6 @@ class CommentFirstLevelView(ListAPIView):
         obj.process_comment_async(actor_handler=self.get_actor_handler())
         return Response(serializer.data)
 
-    @abc.abstractmethod
-    def get_actor(self):
-        raise NotImplementedError("Override in subclass")
-
-    @abc.abstractmethod
-    def get_actor_handler(self):
-        raise NotImplementedError("Override in subclass")
-
     def validate(self):
         self.write_up = self.get_object()
 
@@ -76,7 +80,7 @@ class CommentNestedView(CommentFirstLevelView):
             raise SuspiciousOperation("No object found.")
 
 
-class DeleteComment(CommentNestedView):
+class DeleteCommentView(CommentNestedView):
     """ delete any level comment """
 
     def delete(self, request, *args, **kwargs):
@@ -86,3 +90,67 @@ class DeleteComment(CommentNestedView):
         comment.save()
         serializer = self.get_serializer(comment)
         return Response(serializer.data)
+
+
+class VoteWriteupView(Mixin, GenericAPIView):
+    serializer_class = VoteWriteUpSerializer
+    write_up = None
+    vote_type = None
+
+    def get_object(self):
+        write_up_uuid = self.kwargs.get('write_up_uuid', None)
+        if write_up_uuid:
+            return get_object_or_404(WriteUp, uuid=write_up_uuid)
+        else:
+            raise SuspiciousOperation("No object found")
+
+    def post(self, request, *args, **kwargs):
+        self.write_up = self.get_object()
+
+        obj, created = VoteWriteUp.objects.update_or_create(
+            content_type=ContentType.objects.get_for_model(self.get_actor()),
+            object_id=self.get_actor().id, write_up=self.write_up,
+            defaults={'vote_type': self.vote_type}
+        )
+
+        owner = self.write_up.get_owner()
+        if created:
+            notify_async.delay(
+                user_object_id=owner.object_id,
+                user_content_type=owner.content_type.id,
+                notification_type='CO',
+                write_up_id=self.write_up.id,
+                redirect_url="bcbc",
+                actor_handler=self.get_actor_handler()
+            )
+        return Response(status=status.HTTP_200_OK)
+
+
+class UpVoteWriteupView(VoteWriteupView):
+    vote_type = True
+
+
+class DownVoteWriteupView(VoteWriteupView):
+    vote_type = False
+
+
+class RemoveVoteWriteupView(VoteWriteupView):
+    def post(self, request, *args, **kwargs):
+        raise Exception("Method is disabled")
+
+    def delete(self, request, *args, **kwargs):
+        self.write_up = self.get_object()
+
+        try:
+            obj = VoteWriteUp.objects.get(
+                content_type=ContentType.objects.get_for_model(self.get_actor()),
+                object_id=self.get_actor().id, write_up=self.write_up
+            )
+        except VoteWriteUp.DoesNotExist:
+            return Response(status=status.HTTP_200_OK)
+        except Exception as e:
+            pass  # TODO: activitylog
+        else:
+            obj.vote_type = None
+            obj.save()
+            return Response(status=status.HTTP_200_OK)
