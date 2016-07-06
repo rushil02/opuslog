@@ -22,6 +22,9 @@ class Mixin(object):
     def get_actor_handler(self):
         raise NotImplementedError("Override in subclass")
 
+    def get_redirect_url(self):
+        raise NotImplementedError("Override in subclass")
+
 
 class CommentFirstLevelView(Mixin, ListAPIView):
     """ get or create first level comments """
@@ -53,7 +56,7 @@ class CommentFirstLevelView(Mixin, ListAPIView):
             user_content_type=owner.content_type.id,
             notification_type='CO',
             write_up_id=self.write_up.id,
-            redirect_url="bcbc",
+            redirect_url=self.get_redirect_url(),
             actor_handler=self.get_actor_handler()
         )
         obj.process_comment_async(actor_handler=self.get_actor_handler())

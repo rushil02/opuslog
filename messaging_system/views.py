@@ -19,7 +19,7 @@ class Mixin(object):
         raise NotImplementedError("Override in subclass")
 
 
-class ThreadView(Mixin, ListAPIView):
+class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove Threads with no user/publication
     """
     Return list of threads of a user, creates a new entry and updates a given
     thread's subject.
@@ -38,7 +38,7 @@ class ThreadView(Mixin, ListAPIView):
             request, actor=self.get_actor_for_activity(), entity=obj, view='ThreadView',
             arguments={'args': args, 'kwargs': kwargs}, act_type='create_thread'
         )
-        return Response(serializer.data)
+        return Response(serializer.data), obj.subject
 
     def get_object(self):
         thread_id = self.kwargs.get('thread_id', None)

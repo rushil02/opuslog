@@ -1,7 +1,9 @@
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
+from essential.tasks import notify_async
 from publication.permissions import UserPublicationPermissionMixin
 from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
     SubscriberView, VoteCommentView
@@ -16,16 +18,17 @@ class GetActor(object):
 
     def get_actor(self):
         if not self.actor:
-            self.actor = self.request.user.publication_identity
+            self.actor = self.get_real_actor().publication_identity
         return self.actor
 
     def get_actor_handler(self):
         return self.get_actor().handler
 
     def get_actor_for_activity(self):
-        obb = self.get_actor().contributorlist_set.get(contributor=self.request.user)
-        print obb
-        return obb
+        return self.get_actor().contributorlist_set.get(contributor=self.request.user)
+
+    def get_real_actor(self):
+        return self.request.user
 
 
 class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
@@ -43,6 +46,24 @@ class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
 
     def get_thread_query(self, thread_id):
         return get_object_or_404(Thread, id=thread_id, threadmember__publication=self.get_actor())
+
+    def post(self, request, *args, **kwargs):
+        response, subject = super(PublicationThreads, self).post(request, *args, **kwargs)
+        notify_async.delay(
+            user_object_id=self.get_actor().id,
+            user_content_type=ContentType.objects.get_for_model(self.get_actor()).id,
+            notification_type='NT',
+            redirect_url=self.get_redirect_url(),
+            actor_handler=self.get_actor_handler(),
+            contributor=self.get_real_actor().username,
+            acted_on=subject,
+            template_key='single',
+            permissions=self.permissions['get']
+        )
+        return response
+
+    def get_redirect_url(self):
+        return ""
 
 
 class AddDeleteMemberToThread(GetActor, UserPublicationPermissionMixin, AddDeleteMemberView):

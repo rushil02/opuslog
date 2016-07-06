@@ -101,13 +101,13 @@ class ThreadMember(models.Model):  # TODO: change serializer and views according
     class CustomMeta:
         permission_list = [
             {'name': 'Can create ThreadMember', 'code_name': 'create_ThreadMember', 'for': 'P',
-             'help_text': 'Allow contributor to create ThreadMember'},
+             'help_text': 'Allow contributor to create Thread Members'},
             {'name': 'Can update ThreadMember', 'code_name': 'update_ThreadMember', 'for': 'P',
-             'help_text': 'Allow contributor to update subject of ThreadMember'},
+             'help_text': 'Allow contributor to update subject of Thread Members'},
             {'name': 'Can read ThreadMember', 'code_name': 'read_ThreadMember', 'for': 'P',
-             'help_text': 'Allow contributor to read list of ThreadMember'},
+             'help_text': 'Allow contributor to read list of Thread Members'},
             {'name': 'Can delete ThreadMember', 'code_name': 'delete_ThreadMember', 'for': 'P',
-             'help_text': 'Allow contributor to delete ThreadMember'},
+             'help_text': 'Allow contributor to delete Thread Members'},
         ]
 
     def __unicode__(self):

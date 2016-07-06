@@ -34,3 +34,25 @@ def notify_async(user_object_id, user_content_type, notification_type, write_up_
     getattr(__import__('essential.models', fromlist=['Notification']), 'Notification').objects.notify(
         user=user, notification_type=notification_type, write_up=write_up, **kwargs
     )
+
+
+@app.task(name='generate_async_notification_for_list_of_users')
+def notify_list_async(model, method, method_kwargs, user_list, notification_type, write_up_id=None, **kwargs):
+    """
+    Used when you need to send a notification to a list of users/publication
+    model -> example 'essential.Notification'
+    method -> queryset filter, etc
+    method_kwargs -> {..., ..., } dictionary used as arguments
+    result -> should be an iterable of users or publication objects
+    """
+
+    model = model.split('.')
+    klass = getattr(__import__(model[0] + '.models', fromlist=[model[1]]), model[1])
+    result = getattr(klass.objects, method)(**method_kwargs)
+
+    for detail in result:
+        pass
+        # TODO: write iterating query
+        # getattr(__import__('essential.models', fromlist=['Notification']), 'Notification').objects.notify(
+        #     user=user, notification_type=notification_type, write_up=write_up, **kwargs
+        # )

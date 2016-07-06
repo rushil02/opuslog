@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import models
 from django.conf import settings
+
+from admin_custom.models import ActivityLog
 
 
 class NotificationManager(models.Manager):
@@ -39,8 +42,9 @@ class NotificationManager(models.Manager):
         }
         data = {
             'actor': kwargs.pop('actor_handler', None),
-            'publication': kwargs.pop('publication', None),
+            'contributor': kwargs.pop('contributor', None),
             'acted-on': kwargs.pop('acted_on', None),
+            'extra_arg': kwargs.pop('extra', None),
             'extra': kwargs,
         }
 
@@ -62,13 +66,27 @@ class NotificationManager(models.Manager):
         if user and notification_type:
             if isinstance(user, get_user_model()):
                 self._notify(user, notification_type, write_up, **kwargs)
-            else:
-                contributors = user.get_all_contributors_as_users_with_permission(['receive_Notification'])
+            elif isinstance(user, getattr(__import__('publication.models', fromlist=['Publication']), 'Publication')):
+                perm = ['receive_Notification']
+                perm.extend(kwargs.pop('permissions', []))
+                contributors = user.get_all_contributors_as_users_with_permission(perm)
+                acted_contributor = kwargs.get('contributor', None)
                 for publication_user in contributors:
-                    self._notify(publication_user.contributor, notification_type, write_up, **kwargs)
-
+                    if not publication_user.contributor.username == acted_contributor:
+                        self._notify(publication_user.contributor, notification_type, write_up, **kwargs)
+            else:
+                ActivityLog.objects.create_log(
+                    level='C', message="Notification user object is neither of model 'User' nor 'Publication'",
+                    act_type="Error in creating notification", user=str(user), notification_type=notification_type,
+                    request=None, view='NotificationManager.notify', arguments={'kwargs': kwargs},
+                )
         else:
-            raise AssertionError("Invalid arguments - None type arguments")
+            ActivityLog.objects.create_log(
+                level='C', message="User or Notification type not given",
+                act_type="Error in creating notification", user=str(user),
+                notification_type=notification_type, request=None, view='NotificationManager.notify',
+                arguments={'kwargs': kwargs},
+            )
 
     def _notify(self, user, notification_type, write_up=None, **kwargs):
         template_key = kwargs.pop('template_key', 'many')
@@ -134,6 +152,8 @@ class Notification(models.Model):
         ('DC', 'DownVote Comment'),
         ('UW', 'UpVote Write up'),
         ('DW', 'DownVote Write up'),
+        ('NT', 'New Thread'),
+        ('CS', 'Thread subject changed'),
     )
     verbose_name = {
         'CO': {'single':
@@ -178,6 +198,17 @@ class Notification(models.Model):
                     'args': [{'data': 'actor'}, 'write_up']},
                'many': {'template': '{} and {} others down voted your creation {}',
                         'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+               },
+        'NT': {'single':
+                   {'template': "'{}' of Publication '{}' created a new thread with subject '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'acted-on'}, ]},
+               },
+        'CS': {'single_user':
+                   {'template': "'{}' edited the Thread of subject '{}' to '{}'",
+                    'args': [{'data': 'actor'}, {'data': 'actor'}, {'data': 'acted-on'}, ]},
+               'single_pub':
+                   {'template': "'{}' of Publication '{}' created a new thread with subject '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'acted-on'}, ]},
                },
     }
     notification_type = models.CharField(max_length=2, choices=CHOICE)
