@@ -25,5 +25,5 @@ urlpatterns = [
     url(r'^pub/', include('publication.urls', namespace='publication')),
     url(r'^tinymce/', include('tinymce.urls')),
     url(r'^es/', include('essential.urls', namespace='essential')),
-    url(r'^test/', include('engagement.urls')),  # TODO:remove
+    url(r'^search/', include('haystack.urls')),
 ]

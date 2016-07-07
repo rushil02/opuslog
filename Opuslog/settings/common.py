@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     # 'allauth.socialaccount.providers.facebook', # FIXME: uncomment when ready
     # 'allauth.socialaccount.providers.google',  # FIXME: uncomment when ready, *tested - working*
     'debug_toolbar',
+    'haystack',
     'tinymce',
     'rest_framework',
     'djcelery',
@@ -250,3 +251,14 @@ AUTH_USER_MODEL = 'user_custom.User'
 RECAPTCHA_PUBLIC_KEY = '6LcL-yETAAAAAJ_qq0TpWeCz4qo9mQGdGxR-6qBk'
 RECAPTCHA_PRIVATE_KEY = '6LcL-yETAAAAAJcWHEox7nwwTLoZ5Hq7Ody-EFM-'
 NOCAPTCHA = True
+
+
+# Search Engine settings - Haystack
+HAYSTACK_CONNECTIONS = {
+    'default': {
+        'ENGINE': 'haystack.backends.solr_backend.SolrEngine',
+        'URL': 'http://127.0.0.1:8983/solr'
+        # ...or for multicore...
+        # 'URL': 'http://127.0.0.1:8983/solr/mysite',
+    },
+}
