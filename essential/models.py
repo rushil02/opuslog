@@ -16,7 +16,7 @@ class NotificationManager(models.Manager):
     def get_queryset(self):
         return super(NotificationManager, self).get_queryset()
 
-    def get_notification(self, user):  # FIXME: Merge these 2 query without iter tools
+    def get_notification(self, user):  # FIXME: Merge these 2 query without iter tools, Tiwari batayega
         """
         returns all 'not notified' and only 5 'latest already notified'
         notifications are fetched from db
@@ -36,25 +36,17 @@ class NotificationManager(models.Manager):
 
     def create_new_notification(self, user, notification_type, template_key, write_up=None, **kwargs):
         context = {
-            'image': kwargs.pop('image_url', self.get_default_image()),
+            'image': kwargs.pop('image_url', None),
             'level': kwargs.pop('level', 'info'),
             'redirect-url': kwargs.pop('redirect_url', None),
-        }
-        data = {
-            'actor': kwargs.pop('actor_handler', None),
-            'contributor': kwargs.pop('contributor', None),
-            'acted-on': kwargs.pop('acted_on', None),
-            'extra_arg': kwargs.pop('extra', None),
-            'extra': kwargs,
         }
 
         notification = Notification(user=user,
                                     write_up=write_up,
-                                    data=data,
-                                    context=context,
+                                    data=kwargs,
                                     notification_type=notification_type)
 
-        return notification.save(template_key=template_key, verbose=kwargs.get('verbose', None))
+        return notification.save(template_key=template_key, verbose=kwargs.get('verbose', None), context=context)
 
     def notify(self, user, notification_type, write_up=None, **kwargs):
         """
@@ -105,10 +97,6 @@ class NotificationManager(models.Manager):
             notification.add_on_actor_count += 1
             notification.save(template_key=template_key, verbose=kwargs.get('verbose', None))
 
-    @staticmethod
-    def get_default_image():
-        return ""
-
 
 class Notification(models.Model):
     """
@@ -139,6 +127,14 @@ class Notification(models.Model):
     All new notifications will be marked as notified once the request is
     received. The 'notified url' will be encrypted using django signing with
     user_id and SALT as 'notification-opuslog'.
+
+    data = {
+        'actor': kwargs.pop('actor_handler', None),
+        'contributor': kwargs.pop('contributor', None),
+        'acted-on': kwargs.pop('acted_on', None),
+        'extra': ...,
+        ...
+        }
     """
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -153,62 +149,69 @@ class Notification(models.Model):
         ('UW', 'UpVote Write up'),
         ('DW', 'DownVote Write up'),
         ('NT', 'New Thread'),
-        ('CS', 'Thread subject changed'),
+        ('UT', 'Update Thread subject'),
     )
-    verbose_name = {
+    display_details = {
         'CO': {'single':
                    {'template': '{} commented on your creation {}',
-                    'args': [{'data': 'actor'}, 'write_up']
-                    },
+                    'args': [{'data': 'actor'}, 'write_up']},
                'many': {'template': '{} and {} others commented on your creation {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']
-                        }
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+               'image': "",
                },
         'CR': {'single':
                    {'template': '{} replied to your comment on {}',
                     'args': [{'data': 'actor'}, 'write_up']},
                'many':
                    {'template': '{} and {} others replied to your comment on {}',
-                    'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+                    'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+               'image': "",
                },
         'CT': {'single':
                    {'template': '{} tagged you in a comment on {}',
                     'args': [{'data': 'actor'}, 'write_up']},
+               'image': "",
                },
         'UC': {'single':
                    {"template": '{} up voted your comment on {}',
                     'args': [{'data': 'actor'}, 'write_up']},
                'many': {'template': '{} and {} others up voted your comment on {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+               'image': "",
                },
         'DC': {'single':
                    {'template': '{} down voted your comment on {}',
                     'args': [{'data': 'actor'}, 'write_up']},
                'many': {'template': '{} and {} others down voted your comment on {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+               'image': "",
                },
         'UW': {'single':
                    {'template': '{} up voted your creation {}',
                     'args': [{'data': 'actor'}, 'write_up']},
                'many': {'template': '{} and {} others up voted your comment on {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+               'image': "",
                },
         'DW': {'single':
                    {'template': '{} down voted your creation {}',
                     'args': [{'data': 'actor'}, 'write_up']},
                'many': {'template': '{} and {} others down voted your creation {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']}
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+               'image': "",
                },
         'NT': {'single':
                    {'template': "'{}' of Publication '{}' created a new thread with subject '{}'",
                     'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'acted-on'}, ]},
+               'image': "",
                },
-        'CS': {'single_user':
+        'UT': {'single_user':
                    {'template': "'{}' edited the Thread of subject '{}' to '{}'",
-                    'args': [{'data': 'actor'}, {'data': 'actor'}, {'data': 'acted-on'}, ]},
+                    'args': [{'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
                'single_pub':
-                   {'template': "'{}' of Publication '{}' created a new thread with subject '{}'",
-                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'acted-on'}, ]},
+                   {'template': "'{}' of Publication '{}' edited the Thread of subject '{}' to '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
+               'image': "",
                },
     }
     notification_type = models.CharField(max_length=2, choices=CHOICE)
@@ -235,11 +238,14 @@ class Notification(models.Model):
     def save(self, *args, **kwargs):
         template_key = kwargs.pop('template_key', 'single')
         verbose = kwargs.pop('verbose', None)
+        self.context = kwargs.pop('context')
+        if not self.context['image']:
+            self.context['image'] = self.get_default_image()
         self.verbose = verbose if verbose else self.get_verbose(self.notification_type, template_key)
         super(Notification, self).save(*args, **kwargs)
 
     def get_verbose(self, notification_type, template_key):
-        verbose_handler = self.verbose_name[notification_type][template_key]
+        verbose_handler = self.display_details[notification_type][template_key]
         template = verbose_handler['template']
         template_args = verbose_handler['args']
         args = []
@@ -249,6 +255,10 @@ class Notification(models.Model):
             else:
                 args.append(getattr(self, arg))
         return template.format(*args)
+
+    def get_default_image(self):
+        foo = self.display_details
+        return ""
 
 
 class Tag(models.Model):
@@ -272,8 +282,6 @@ class Tag(models.Model):
 class Group(models.Model):
     """
     Works as folders or categorising write ups internally for a creator entity.
-    Publication additionally can assign permissions over this categorisation
-    to its contributor.
     """
 
     LIMIT = models.Q(
