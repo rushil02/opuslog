@@ -103,16 +103,18 @@ class WriteUp(models.Model):
 
     objects = WriteUpManager()
 
+    class CustomMeta:
+        permission_list = [
+            {'name': 'Can Edit article', 'code_name': 'can_edit',
+             'help_text': 'Allow contributor to edit Write up'},
+        ]
+
     def __unicode__(self):
         return self.title
 
-    def set_owner(self, owner, publication_user=None):
+    def set_owner(self, owner):  # fixme: add all writeup permissions to owner
         contributor = ContributorList.objects.create_contributor(owner, write_up=self, is_owner=True, share_XP=100,
                                                                  share_money=100)
-        if publication_user:
-            self.create_write_up_profile(publication_user)
-        else:
-            self.create_write_up_profile(owner)
         return contributor
 
     def create_write_up_profile(self, user):
@@ -125,10 +127,10 @@ class WriteUp(models.Model):
     def get_all_contributors(self):  # FIXME: exclude removed contributors
         return self.contributorlist_set.all()
 
-    def create_write_up_handler(self, user):
+    def create_write_up_handler(self, **kwargs):
         method_name = 'create_' + self.collection_type.lower()
         method = getattr(self, method_name)
-        method(user)
+        method(**kwargs)
 
     def get_handler_redirect_url(self):
         """
@@ -148,22 +150,23 @@ class WriteUp(models.Model):
         }
         return redirect_url.get(self.collection_type)
 
-    def create_b(self, user):
+    def create_b(self, **kwargs):
         pass
 
-    def create_m(self, user):
+    def create_m(self, **kwargs):
         pass
 
-    def create_i(self, user):
+    def create_i(self, **kwargs):
+        contributor = kwargs.get('contributor')
         base_design = BaseDesign.objects.create()
         unit = Unit.objects.create(write_up=self, text=base_design)
-        unit.add_unit_contributor(user)
+        unit.add_unit_contributor(contributor)
 
-    def create_l(self, user):
+    def create_l(self, **kwargs):
         base_design = BaseDesign.objects.create()
         LiveWriting.objects.create(write_up=self, text=base_design)
 
-    def create_g(self, user):
+    def create_g(self, **kwargs):
         GroupWriting.objects.create(write_up=self)
 
     def get_all_chapters(self):
@@ -187,11 +190,9 @@ class WriteupProfile(models.Model):
 class ContributorListQuerySet(models.QuerySet):
     def permission(self, permission_list):
         permission_qs = self
-        owner_qs = self
         for permission in permission_list:
             permission_qs = permission_qs.filter(permissions__code_name=permission)
-        qs = permission_qs | owner_qs.owner()
-        return qs
+        return permission_qs
 
     def owner(self):
         return self.filter(is_owner=True)
@@ -299,12 +300,11 @@ class Unit(models.Model):
     text = models.OneToOneField(BaseDesign)
     title = models.CharField(max_length=250, null=True, blank=True)
 
-    def add_unit_contributor(self, user, publication=None):
-        return self.unitcontributor_set.create(user=user, publication=publication)
+    def add_unit_contributor(self, contributor):
+        return self.unitcontributor_set.create(contributor=contributor)
 
 
 class UnitContributor(models.Model):
-    # FIXME: Change usage in write up views
     """ Holds the creators for each Chapter/Article in a write up. """
 
     article = models.ForeignKey(Unit)

@@ -21,6 +21,9 @@ class GetActor(object):
     def get_actor_handler(self):
         return self.get_actor().handler
 
+    def get_success_url_prefix(self):
+        return ""
+
 
 class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
     """ Implements ThreadView for Publication entity. """

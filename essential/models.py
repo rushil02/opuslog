@@ -238,11 +238,17 @@ class Tag(models.Model):
     create_time = models.DateTimeField(auto_now_add=True)
 
 
+class GroupManager(models.Manager):
+    def get_other_groups(self):
+        return self.get_queryset().filter(contributed_group=False)
+
+
 class Group(models.Model):
     """
     Works as folders or categorising write ups internally for a creator entity.
     Publication additionally can assign permissions over this categorisation
     to its contributor.
+    Contributed Group field is true for groups storing the contributed write ups for a publication
     """
 
     LIMIT = models.Q(
@@ -254,9 +260,37 @@ class Group(models.Model):
     object_id = models.PositiveIntegerField()
     entity = GenericForeignKey('content_type', 'object_id')
     name = models.CharField(max_length=100)
+    contributed_group = models.BooleanField(default=False)
+
+    objects = GroupManager()
 
     class Meta:
         unique_together = ('content_type', 'object_id', 'name')
+
+    def __unicode__(self):
+        return self.name
+
+    def get_contributor_with_perm(self, perm_list, contributor):
+        return self.groupcontributor_set.get_contributor_for_group_with_perm(perm_list, contributor)
+
+
+class GroupContributorQuerySet(models.QuerySet):
+    def permission(self, permission_list):
+        permission_qs = self
+        for permission in permission_list:
+            permission_qs = permission_qs.filter(permissions__code_name=permission)
+        return permission_qs
+
+    def for_contributor(self, contributor):
+        return self.get(contributor=contributor)
+
+
+class GroupContributorManager(models.Manager):
+    def get_queryset(self):
+        return GroupContributorQuerySet(self.model, using=self._db)
+
+    def get_contributor_for_group_with_perm(self, permission_list, contributor):
+        return self.get_queryset().permission(permission_list).for_contributor(contributor)
 
 
 class GroupContributor(models.Model):
@@ -267,7 +301,9 @@ class GroupContributor(models.Model):
 
     group = models.ForeignKey(Group)
     contributor = models.ForeignKey('publication.ContributorList')
-    permission = models.ManyToManyField('essential.Permission')
+    permissions = models.ManyToManyField('essential.Permission')
+
+    objects = GroupContributorManager()
 
     class Meta:
         unique_together = ('group', 'contributor')

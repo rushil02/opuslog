@@ -1,6 +1,5 @@
 import abc
 
-from django.contrib.auth import get_user_model
 from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from django.views.generic.base import TemplateResponseMixin, View
@@ -12,11 +11,7 @@ from write_up.models import WriteUp, BaseDesign, CollectionUnit, Unit
 
 class UserPublicationMixin(object):
     @abc.abstractmethod
-    def get_user(self):
-        raise NotImplementedError("Not Implemented Error")
-
-    @abc.abstractmethod
-    def get_publication_user(self):
+    def get_actor(self):
         raise NotImplementedError("Not Implemented Error")
 
     @abc.abstractmethod
@@ -30,16 +25,19 @@ class WriteupPermissionMixin(object):
     collection_type = None
 
     def dispatch(self, request, *args, **kwargs):
-        method_permission_list = self.permissions.get(request.method.lower())
+        method_permission_list = self.permissions.get(request.method.lower(), None)
         if method_permission_list:
             uuid = self.kwargs.get('write_up_uuid')
             try:
-                self.contributor = self.get_user() \
+                self.contributor = self.get_actor() \
                     .contribution.get_contributor_for_writeup_with_perm(uuid,
                                                                         method_permission_list,
                                                                         collection_type=self.collection_type)
             except:
                 return HttpResponseForbidden()
+        return self.post_permission_check(request, *args, **kwargs)
+
+    def post_permission_check(self, request, *args, **kwargs):
         return super(WriteupPermissionMixin, self).dispatch(request, *args, **kwargs)
 
 
@@ -55,13 +53,18 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
         return user_type_prefix + url + str(write_up.uuid)
 
     def form_valid(self, form):
-        user = self.get_user()
+        user = self.get_actor()
         self.object = form.save()
         write_up = self.object
-        write_up.set_owner(user, publication_user=self.get_publication_user())
-        write_up.create_write_up_handler(
-            user=user)  # TODO: owner in contributor of a unit(UnitContributor) where owner is publication. i dont understand what should i fill in user variable which is not null for publication type owner.
+        owner = write_up.set_owner(user)
+        write_up.create_write_up_profile(user=self.request.user)
+        write_up.create_write_up_handler(contributor=owner)
         return HttpResponseRedirect(self.get_success_url())
+
+    def get_form_kwargs(self):
+        kwargs = super(CreateWriteUpView, self).get_form_kwargs()
+        kwargs.update({'actor': self.get_actor()})
+        return kwargs
 
 
 class EditWriteUpView(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, BaseUpdateView):
@@ -232,16 +235,11 @@ class CollectionUnitView(UserPublicationMixin, WriteupPermissionMixin, TemplateR
 
         base_design = BaseDesign.objects.create()
         unit = Unit.objects.create(text=base_design, title=title)
-        if isinstance(self.get_user(), get_user_model()):
-            unit.add_unit_contributor(self.get_user())
-        else:
-            unit.add_unit_contributor(user=self.get_publication_user(), publication=self.get_user())
+        unit.add_unit_contributor(self.contributor)
 
         if not self.contributor.is_owner:
             owner = self.write_up.get_owner()
-            if isinstance(owner.contributor, get_user_model()):
-                unit.add_unit_contributor(owner.contributor)
-                # TODO: owner in contributor of a unit(UnitContributor) where owner is publication. i dont understand what should i fill in user variable which is not null for publication type owner.
+            unit.add_unit_contributor(owner)
 
         collection_unit.article = unit
         self.object = collection_unit.save()

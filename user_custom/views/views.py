@@ -9,7 +9,6 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import View
 
-from admin_custom.decorators import has_write_up_perm
 from user_custom.forms import CustomLoginForm, CustomSignupForm
 from write_up.forms import AddContributorForm, EditPermissionFormSet
 from write_up.views import CreateWriteUpView, EditWriteUpView, CollectionUnitView, \
@@ -154,11 +153,8 @@ def user_page(request, user_handler):
 
 
 class UserViewMixin(object):
-    def get_user(self):
+    def get_actor(self):
         return self.request.user
-
-    def get_publication_user(self):
-        return None
 
     def get_success_url_prefix(self):
         return ""
