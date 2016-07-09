@@ -6,7 +6,7 @@ from publication.views import (
     PublicationSubscriber, PublicationVoteComment)
 
 urlpatterns = [
-    url(r'^pub_details/(?P<publication_handler>[^/]+)/$', publication_page, name='publication_details'),
+    url(r'^pub_details/$', publication_page, name='publication_details'),
 
     url(r'^threads/$', PublicationThreads.as_view(), name='all_threads'),
     url(r'^threads/(?P<thread_id>[^/]+)/$', PublicationThreads.as_view(), name='update_thread'),

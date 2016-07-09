@@ -90,7 +90,7 @@ class Publication(models.Model):  # TODO create default group for each publicati
         return self.handler
 
     def get_handler_url(self):
-        return reverse('publication:publication_details', kwargs={'publication_handler': self.handler})
+        return reverse('publication:publication_details', kwargs={'pub_handler': self.handler})
 
     def get_all_contributors_as_users_with_permission(self, permission_list):
         return self.contributorlist_set.get_all_contributors_with_permission(permission_list)
@@ -106,16 +106,16 @@ class ContributorListQuerySet(models.QuerySet):
     # def owner(self):
     #     return self.filter(publication__created_by=F('contributor'))
 
-    def for_publication(self, publication):
-        return self.get(publication=publication)
+    def for_publication(self, publication_handler, user):
+        return self.select_related('publication').get(publication__handler=publication_handler, contributor=user)
 
 
 class ContributorListManager(models.Manager):
     def get_queryset(self):
         return ContributorListQuerySet(self.model, using=self._db)
 
-    def get_contributor_for_publication_with_perm(self, publication, acc_perm_code):
-        return self.get_queryset().permission(acc_perm_code).for_publication(publication)
+    def get_contributor_for_publication_with_perm(self, publication_handler, permission_list, user):
+        return self.get_queryset().permission(permission_list).for_publication(publication_handler, user)
 
     def get_all_contributors_with_permission(self, permission_list):
         return self.get_queryset().permission(permission_list).select_related('contributor')

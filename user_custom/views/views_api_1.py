@@ -3,20 +3,16 @@ from rest_framework.permissions import IsAuthenticated
 
 from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
     SubscriberView, VoteCommentView
+from essential.views import AcceptDenyRequest
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
-from user_custom.permissions import CheckUserMixin
 
 
 class GetActor(object):
     """ For Method inherited by every User API class."""
 
-    actor = None
-
     def get_actor(self):
-        if not self.actor:
-            self.actor = self.request.user
-        return self.actor
+        return self.request.user
 
     def get_actor_handler(self):
         return self.get_actor().username
@@ -25,7 +21,7 @@ class GetActor(object):
         return self.get_actor()
 
 
-class UserThreads(CheckUserMixin, GetActor, ThreadView):
+class UserThreads(GetActor, ThreadView):
     """ Implements ThreadView for User entity. """
 
     permission_classes = [IsAuthenticated]
@@ -36,11 +32,8 @@ class UserThreads(CheckUserMixin, GetActor, ThreadView):
     def get_thread_query(self, thread_id):
         return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
 
-    def post(self, request, *args, **kwargs):
-        return super(UserThreads, self).post(request, *args, **kwargs)[0]
 
-
-class AddDeleteMemberToThread(CheckUserMixin, GetActor, AddDeleteMemberView):
+class AddDeleteMemberToThread(GetActor, AddDeleteMemberView):
     """ Implements AddDeleteMemberView for User entity. """
 
     permission_classes = [IsAuthenticated]
@@ -49,7 +42,7 @@ class AddDeleteMemberToThread(CheckUserMixin, GetActor, AddDeleteMemberView):
         return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
 
 
-class MessageOfThread(CheckUserMixin, GetActor, MessageView):
+class MessageOfThread(GetActor, MessageView):
     """ Implements MessageView for User entity. """
 
     permission_classes = [IsAuthenticated]
@@ -61,31 +54,36 @@ class MessageOfThread(CheckUserMixin, GetActor, MessageView):
         return None
 
 
-class UserCommentFirstLevel(CheckUserMixin, GetActor, CommentFirstLevelView):
+class UserCommentFirstLevel(GetActor, CommentFirstLevelView):
     """ Implements UserView for posting/fetching first level comments. """
     pass
 
 
-class UserCommentNested(CheckUserMixin, GetActor, CommentNestedView):
+class UserCommentNested(GetActor, CommentNestedView):
     """ Implements UserView for posting/fetching nested comments. """
     pass
 
 
-class UserCommentDelete(CheckUserMixin, GetActor, DeleteCommentView):
+class UserCommentDelete(GetActor, DeleteCommentView):
     """ Implements UserView for deleting any comment. """
     pass
 
 
-class UserVoteWriteup(CheckUserMixin, GetActor, VoteWriteupView):
+class UserVoteWriteup(GetActor, VoteWriteupView):
     """ Implements UserView for up/down voting a writeup, or deleting so"""
     pass
 
 
-class UserSubscriber(CheckUserMixin, GetActor, SubscriberView):
+class UserSubscriber(GetActor, SubscriberView):
     """ Implements UserView for Subscribing a publication or user """
     pass
 
 
-class UserVoteComment(CheckUserMixin, GetActor, VoteCommentView):
+class UserVoteComment(GetActor, VoteCommentView):
     """ Implements UserView for up/down voting a comment, or deleting so """
+    pass
+
+
+class UserRequest(GetActor, AcceptDenyRequest):
+    """"""
     pass

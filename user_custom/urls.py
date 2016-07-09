@@ -2,7 +2,7 @@ from django.conf.urls import url
 
 from user_custom.views.views_api_1 import (
     UserCommentFirstLevel, UserCommentNested, UserThreads, AddDeleteMemberToThread, MessageOfThread,
-    UserCommentDelete, UserVoteWriteup, UserSubscriber, UserVoteComment)
+    UserCommentDelete, UserVoteWriteup, UserSubscriber, UserVoteComment, UserRequest)
 from user_custom.views.views import MainView, CustomLoginView, CreateUserWriteUpView, edit_article_view, \
     edit_write_up_view, \
     collection_unit_view, edit_collection_article_view, user_page
@@ -35,5 +35,7 @@ urlpatterns = [
     url(r'^vote/write_up/(?P<write_up_uuid>[^/]+)/$', UserVoteWriteup.as_view(), name='vote_write_up'),
 
     url(r'^subscribe/$', UserSubscriber.as_view(), name='subscribe'),
+
+    url(r'^request/(?P<notification_id>[0-9]+)/$', UserRequest.as_view(), name='request'),
 
 ]

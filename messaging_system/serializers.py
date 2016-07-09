@@ -27,11 +27,15 @@ class ThreadMemberSerializer(serializers.ModelSerializer):
 class AddMemberSerializer(serializers.Serializer):
     """ Custom Serializer to add/delete members """
 
+    def __init__(self, *args, **kwargs):
+        self.thread = kwargs.pop('thread', None)
+        super(AddMemberSerializer, self).__init__(*args, **kwargs)
+
     entity_handler = serializers.CharField(max_length=30)
     obj = None
 
-    def validate(self, attrs):
-        handler = attrs.get('entity_handler')
+    def validate_entity_handler(self, value):
+        handler = value
 
         try:
             self.obj = get_user_model().objects.get(username=handler)
@@ -41,9 +45,12 @@ class AddMemberSerializer(serializers.Serializer):
             except ObjectDoesNotExist:
                 raise ValidationError("Object does not exist")
             else:
-                return attrs
+                if self.thread.threadmember_set.filter(publication=self.obj).exists():
+                    raise ValidationError("Member already exists")
         else:
-            return attrs
+            if self.thread.threadmember_set.filter(user=self.obj).exists():
+                raise ValidationError("Member already exists")
+        return value
 
 
 class ThreadSerializer(serializers.ModelSerializer):

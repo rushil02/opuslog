@@ -56,6 +56,7 @@ class NotificationManager(models.Manager):
         """
 
         if user and notification_type:
+            url_append = kwargs.get('redirect_url', None)
             if isinstance(user, get_user_model()):
                 self._notify(user, notification_type, write_up, **kwargs)
             elif isinstance(user, getattr(__import__('publication.models', fromlist=['Publication']), 'Publication')):
@@ -63,6 +64,8 @@ class NotificationManager(models.Manager):
                 perm.extend(kwargs.pop('permissions', []))
                 contributors = user.get_all_contributors_as_users_with_permission(perm)
                 acted_contributor = kwargs.get('contributor', None)
+                if url_append:
+                    kwargs['redirect_url'] = '/pub/' + user.handler + kwargs['redirect_url']
                 for publication_user in contributors:
                     if not publication_user.contributor.username == acted_contributor:
                         self._notify(publication_user.contributor, notification_type, write_up, **kwargs)
@@ -83,7 +86,7 @@ class NotificationManager(models.Manager):
     def _notify(self, user, notification_type, write_up=None, **kwargs):
         template_key = kwargs.pop('template_key', 'many')
         try:
-            if template_key == 'single':
+            if template_key == 'single' or kwargs.get('verbose', None):
                 raise Notification.DoesNotExist
             notification = self.get_queryset().get(user=user,
                                                    write_up=write_up,
@@ -150,6 +153,7 @@ class Notification(models.Model):
         ('DW', 'DownVote Write up'),
         ('NT', 'New Thread'),
         ('UT', 'Update Thread subject'),
+        ('RL', 'Request Accept/Deny'),  # TODO: append notification id in frontend to its url
     )
     display_details = {
         'CO': {'single':
@@ -201,18 +205,18 @@ class Notification(models.Model):
                'image': "",
                },
         'NT': {'single':
-                   {'template': "'{}' of Publication '{}' created a new thread with subject '{}'",
-                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'acted-on'}, ]},
+                   {'template': "'{} created a new thread with subject '{}'",
+                    'args': [{'data': 'actor'}, {'data': 'acted-on'}, ]},
                'image': "",
                },
-        'UT': {'single_user':
-                   {'template': "'{}' edited the Thread of subject '{}' to '{}'",
-                    'args': [{'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
-               'single_pub':
-                   {'template': "'{}' of Publication '{}' edited the Thread of subject '{}' to '{}'",
-                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
-               'image': "",
-               },
+        '`UT`': {'single':
+                     {'template': "'{}' edited the Thread of subject '{}' to '{}'",
+                      'args': [{'data': 'actor_handler'}, {'data': 'old_subject'}, {'data': 'new_subject'}, ]},
+                 'internal_publication':
+                     {'template': "'{}' of Publication '{}' edited the Thread of subject '{}' to '{}'",
+                      'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
+                 'image': "",
+                 },
     }
     notification_type = models.CharField(max_length=2, choices=CHOICE)
 
@@ -331,28 +335,46 @@ class Permission(models.Model):
         return self.code_name
 
 
-class Request(models.Model):
-    """ Request by or for a user/publication to contribute in a Publication/Writeup"""
+class RequestLog(models.Model):
+    """
+    - Request by or for a user/publication to contribute in a Publication/Writeup
+    - Request by a user/Publication to a user/Publication to join in on a Thread as its member
+    """
 
-    LIMIT = models.Q(app_label='publication',
-                     model='publication') | models.Q(app_label='write_up',
-                                                     model='writeup')
+    LIMIT = models.Q(
+        app_label='publication',
+        model='publication'
+    ) | models.Q(
+        app_label='write_up',
+        model='writeup'
+    ) | models.Q(
+        app_label='messaging_system',
+        model='thread'
+    )
     request_for_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
                                                  related_name='request_for')
     request_for_object_id = models.PositiveIntegerField()
     request_for = GenericForeignKey('request_for_content_type', 'request_for_object_id')
 
-    LIMIT = models.Q(app_label='publication',
-                     model='publication') | models.Q(app_label='user_custom',
-                                                     model='user')
+    LIMIT = models.Q(
+        app_label='publication',
+        model='publication'
+    ) | models.Q(
+        app_label='user_custom',
+        model='user'
+    )
     request_from_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
                                                   related_name='request_from')
     request_from_object_id = models.PositiveIntegerField()
     request_from = GenericForeignKey('request_from_content_type', 'request_from_object_id')
 
-    LIMIT = models.Q(app_label='publication',
-                     model='publication') | models.Q(app_label='user_custom',
-                                                     model='user')
+    LIMIT = models.Q(
+        app_label='publication',
+        model='publication'
+    ) | models.Q(
+        app_label='user_custom',
+        model='user'
+    )
     request_to_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=LIMIT,
                                                 related_name='request_to_')
     request_to_object_id = models.PositiveIntegerField()
@@ -362,6 +384,12 @@ class Request(models.Model):
         ('R', 'Rejected'),
         ('P', 'Pending'),
     )
-    status = models.CharField(max_length=1, choices=STATUS)
+    status = models.CharField(max_length=1, choices=STATUS, default='P')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('request_for_content_type', 'request_for_object_id',
+                           'request_to_content_type', 'request_to_object_id',
+                           'status',
+                           )

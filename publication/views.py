@@ -1,10 +1,8 @@
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
-from essential.tasks import notify_async
-from publication.permissions import UserPublicationPermissionMixin
+from publication.permissions import PublicationContributorPermissionMixin
 from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
     SubscriberView, VoteCommentView
 from messaging_system.models import Thread
@@ -17,21 +15,28 @@ class GetActor(object):
     actor = None
 
     def get_actor(self):
-        if not self.actor:
-            self.actor = self.get_real_actor().publication_identity
-        return self.actor
+        return self.contributor.publication
 
     def get_actor_handler(self):
         return self.get_actor().handler
 
     def get_actor_for_activity(self):
-        return self.get_actor().contributorlist_set.get(contributor=self.request.user)
+        return self.get_actor().contributorlist_set.get(contributor=self.get_user())
 
-    def get_real_actor(self):
+    def get_user(self):
         return self.request.user
 
+    def get_redirect_url(self):
+        return ""
 
-class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
+    def notify_single(self, **kwargs):
+        super(GetActor, self).notify_single(contributor=self.get_user().username, **kwargs)
+
+    def notify_multiple(self, **kwargs):
+        super(GetActor, self).notify_multiple(contributor=self.get_user().username, **kwargs)
+
+
+class PublicationThreads(GetActor, PublicationContributorPermissionMixin, ThreadView):
     """ Implements ThreadView for Publication entity. """
 
     # permissions = ['access_threads']
@@ -47,26 +52,8 @@ class PublicationThreads(GetActor, UserPublicationPermissionMixin, ThreadView):
     def get_thread_query(self, thread_id):
         return get_object_or_404(Thread, id=thread_id, threadmember__publication=self.get_actor())
 
-    def post(self, request, *args, **kwargs):
-        response, subject = super(PublicationThreads, self).post(request, *args, **kwargs)
-        notify_async.delay(
-            user_object_id=self.get_actor().id,
-            user_content_type=ContentType.objects.get_for_model(self.get_actor()).id,
-            notification_type='NT',
-            redirect_url=self.get_redirect_url(),
-            actor_handler=self.get_actor_handler(),
-            contributor=self.get_real_actor().username,
-            acted_on=subject,
-            template_key='single',
-            permissions=self.permissions['get']
-        )
-        return response
 
-    def get_redirect_url(self):
-        return ""
-
-
-class AddDeleteMemberToThread(GetActor, UserPublicationPermissionMixin, AddDeleteMemberView):
+class AddDeleteMemberToThread(GetActor, PublicationContributorPermissionMixin, AddDeleteMemberView):
     """ Implements AddDeleteMemberView for Publication entity. """
 
     permissions = {'post': ['create_ThreadMember'], 'delete': ['delete_ThreadMember']}
@@ -76,7 +63,7 @@ class AddDeleteMemberToThread(GetActor, UserPublicationPermissionMixin, AddDelet
         return get_object_or_404(Thread, id=thread_id, threadmember__publication=self.get_actor())
 
 
-class MessageOfThread(GetActor, UserPublicationPermissionMixin, MessageView):
+class MessageOfThread(GetActor, PublicationContributorPermissionMixin, MessageView):
     """ Implements MessageView for Publication entity. """
 
     permissions = {'get': ['read_messages'], 'post': ['create_messages'], }
@@ -89,9 +76,9 @@ class MessageOfThread(GetActor, UserPublicationPermissionMixin, MessageView):
         return self.request.user
 
 
-def publication_page(request, publication_handler):
+def publication_page(request, pub_handler):
     # TODO: redirect to this page when requested for a publication's detail page
-    return HttpResponse("You reached on some other publication's {%s} home page" % publication_handler)
+    return HttpResponse("You reached on some other publication's {%s} home page" % pub_handler)
 
 
 class PublicationCommentFirstLevel(GetActor, CommentFirstLevelView):

@@ -3,7 +3,7 @@ import time
 import os
 from datetime import datetime
 
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import models
@@ -29,6 +29,10 @@ class Thread(models.Model):
     object_id = models.PositiveIntegerField()
     created_by = GenericForeignKey('content_type', 'object_id')
     create_time = models.DateTimeField(auto_now_add=True)
+
+    for_requests = GenericRelation('essential.Request', content_type_field='request_for_content_type',
+                                   object_id_field='request_for_object_id',
+                                   related_query_name='thread_for_request')
 
     class CustomMeta:
         permission_list = [
@@ -72,7 +76,20 @@ class Message(models.Model):
         return self.thread.subject
 
 
-class ThreadMember(models.Model):  # TODO: change serializer and views accordingly
+class ThreadMemberManager(models.Manager):
+    def get_thread_members_for_thread(self, thread_id):
+        return self.get_queryset().filter(thread__id=thread_id).prefetch_related()
+
+    def add_thread_member_request(self, **kwargs):
+        request_log = kwargs.get('request_log')
+        answer = kwargs.get('answer')
+        if answer:
+            self.get_queryset().create(thread=request_log.request_for, entity=request_log.request_to)
+
+        return '/url/'  # TODO: view url on accept and reject
+
+
+class ThreadMember(models.Model):
     """
     Acts as intermediary table for Thread and User/Publication
     Holds all the meta information for each user-thread relationship.
@@ -97,6 +114,8 @@ class ThreadMember(models.Model):  # TODO: change serializer and views according
     meta_info = JSONField(null=True, blank=True)
     archive = models.BooleanField(default=False)
     create_time = models.DateTimeField(auto_now_add=True)
+
+    objects = ThreadMemberManager()
 
     class CustomMeta:
         permission_list = [

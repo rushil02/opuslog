@@ -26,7 +26,7 @@ def validate():
 def notify_async(user_object_id, user_content_type, notification_type, write_up_id=None, **kwargs):
     user = ContentType.objects.get_for_id(user_content_type).get_object_for_this_type(pk=user_object_id)
     if user.get_handler() == kwargs.get('actor_handler', None):
-        pass
+        return
 
     write_up = None
     if write_up_id:
@@ -58,7 +58,6 @@ def notify_list_async(model, method, method_kwargs, entity, notification_type, w
         user = getattr(obj, entity)
         if user.get_handler() == kwargs.get('actor_handler', None):
             pass
-
         getattr(__import__('essential.models', fromlist=['Notification']), 'Notification').objects.notify(
             user=user, notification_type=notification_type, write_up=write_up, **kwargs
         )

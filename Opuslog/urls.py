@@ -22,7 +22,7 @@ urlpatterns = [
     url(r'^staff/', include('staff_custom.urls', namespace='staff')),
     url(r'^accounts/', include('allauth.urls')),
     url(r'^', include('user_custom.urls', namespace='user_custom')),
-    url(r'^pub/', include('publication.urls', namespace='publication')),
+    url(r'^pub/(?P<pub_handler>[^/]+)/', include('publication.urls', namespace='publication')),
     url(r'^tinymce/', include('tinymce.urls')),
     url(r'^es/', include('essential.urls', namespace='essential')),
     url(r'^search/', include('haystack.urls')),
