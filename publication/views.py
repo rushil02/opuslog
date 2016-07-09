@@ -19,9 +19,10 @@ class GetActor(object):
 
     def get_actor_handler(self):
         return self.get_actor().handler
+    
+    def get_success_url_prefix(self):
+        return ""
 
-    def get_actor_for_activity(self):
-        return self.get_actor().contributorlist_set.get(contributor=self.get_user())
 
     def get_user(self):
         return self.request.user

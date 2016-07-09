@@ -5,7 +5,7 @@ from user_custom.views.views_api_1 import (
     UserCommentDelete, UserVoteWriteup, UserSubscriber, UserVoteComment, UserRequest)
 from user_custom.views.views import MainView, CustomLoginView, CreateUserWriteUpView, edit_article_view, \
     edit_write_up_view, \
-    collection_unit_view, edit_collection_article_view, user_page
+    collection_unit_view, edit_collection_article_view, user_page, user_contributor_request_view
 
 urlpatterns = [
     url(r'^user_details/(?P<user_handler>[^/]+)/$', user_page, name='user_details'),
@@ -27,6 +27,8 @@ urlpatterns = [
     url(r'^comments/(?P<write_up_uuid>[^/]+)/$', UserCommentFirstLevel.as_view(), name='first_level_comments'),
     url(r'^comments/nested/(?P<write_up_uuid>[^/]+)/(?P<comment_id>[^/]+)/$', UserCommentNested.as_view(),
         name='nested_comments'),
+    url(r'^contributor_request/(?P<write_up_uuid>[^/]+)/$', user_contributor_request_view,
+        name='user_contributor_request_view'),
     url(r'^comments/delete/(?P<write_up_uuid>[^/]+)/(?P<comment_id>[^/]+)/$', UserCommentDelete.as_view(),
         name='delete_comment'),
 
