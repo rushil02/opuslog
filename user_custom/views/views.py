@@ -12,7 +12,7 @@ from django.views.generic import View
 from user_custom.forms import CustomLoginForm, CustomSignupForm
 from write_up.forms import AddContributorForm, EditPermissionFormSet
 from write_up.views import CreateWriteUpView, EditWriteUpView, CollectionUnitView, \
-    EditBaseDesign
+    EditBaseDesign, ContributorRequest
 
 
 def check_user(request):
@@ -194,3 +194,10 @@ class EditUserCollectionArticleView(UserViewMixin, EditBaseDesign):
 
 
 edit_collection_article_view = login_required()(EditUserCollectionArticleView.as_view())
+
+
+class UserContributorRequest(UserViewMixin, ContributorRequest):
+    permissions = {'get': ['can_edit']}
+
+
+user_contributor_request_view = login_required()(UserContributorRequest.as_view())

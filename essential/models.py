@@ -309,6 +309,11 @@ class GroupContributor(models.Model):
         unique_together = ('group', 'contributor')
 
 
+class PermissionManager(models.Manager):
+    def get_permissions_for_write_up(self):
+        return self.get_queryset().filter(permission_type='W')
+
+
 class Permission(models.Model):
     """
     Defines permission for each contributor in Writeup/Publication.
@@ -323,6 +328,8 @@ class Permission(models.Model):
     permission_type = models.CharField(max_length=1, choices=FOR_TYPE)
     content_type = models.ForeignKey(ContentType, null=True, blank=True, related_name='contributor_permission')
     create_time = models.DateTimeField(auto_now_add=True)
+
+    objects = PermissionManager()
 
     def __unicode__(self):
         return self.code_name
@@ -359,6 +366,7 @@ class Request(models.Model):
         ('R', 'Rejected'),
         ('P', 'Pending'),
     )
-    status = models.CharField(max_length=1, choices=STATUS)
+    status = models.CharField(max_length=1, choices=STATUS, default='P')
+    data = JSONField(null=True, blank=True)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)

@@ -4,9 +4,12 @@ from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from django.views.generic.base import TemplateResponseMixin, View
 from django.views.generic.edit import BaseCreateView, BaseUpdateView, ModelFormMixin
+from rest_framework.generics import CreateAPIView
+from rest_framework.response import Response
 
 from write_up.forms import CreateWriteUpForm, EditWriteUpForm, BaseDesignForm, CollectionUnitForm
 from write_up.models import WriteUp, BaseDesign, CollectionUnit, Unit
+from write_up.serializers import AddContributorWriteUpSerializer
 
 
 class UserPublicationMixin(object):
@@ -256,3 +259,33 @@ class CollectionUnitView(UserPublicationMixin, WriteupPermissionMixin, TemplateR
         return context
 
 # TODO: add_contributor, remove_contributor, edit permission
+
+
+class ContributorRequest(UserPublicationMixin, WriteupPermissionMixin, CreateAPIView):
+    serializer_class = AddContributorWriteUpSerializer
+    write_up = None
+
+    def get_contributors(self):
+        return self.write_up.get_all_contributors()
+
+    def get_queryset(self):
+        return self.get_contributors()
+
+    def get(self, request, *args, **kwargs):
+        self.write_up = self.contributor.write_up
+        contributors = self.get_contributors()
+        serializer = self.get_serializer(contributors, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, *args, **kwargs):
+        self.write_up = self.contributor.write_up
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        contributor = serializer.obj
+        permission_list = serializer.validated_data.get('permissions')
+        share_XP = serializer.validated_data.get('share_XP')
+        share_money = serializer.validated_data.get('share_money')
+        # TODO: create notification and request for adding contributor
+        message = 'The contributor has been sent a request. Wait for his response.'
+        serializer.data[0].update({'message': message})
+        return Response(serializer.data)

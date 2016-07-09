@@ -42,10 +42,13 @@ import os
 import time
 from datetime import datetime
 
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.conf import settings
+
+from publication.models import Publication
 
 
 def get_file_path(instance, filename):
@@ -106,7 +109,8 @@ class WriteUp(models.Model):
     class CustomMeta:
         permission_list = [
             {'name': 'Can Edit article', 'code_name': 'can_edit',
-             'help_text': 'Allow contributor to edit Write up'},
+             'help_text': 'Allow contributor to edit Write up',
+             'for': 'W'},
         ]
 
     def __unicode__(self):
@@ -125,7 +129,7 @@ class WriteUp(models.Model):
                                                           share_money=share_money)
 
     def get_all_contributors(self):  # FIXME: exclude removed contributors
-        return self.contributorlist_set.all()
+        return self.contributorlist_set.get_all_contributors_for_write_up()
 
     def create_write_up_handler(self, **kwargs):
         method_name = 'create_' + self.collection_type.lower()
@@ -219,6 +223,9 @@ class ContributorListManager(models.Manager):
     def get_owner_for_permission(self, write_up_uuid, collection_type=None):
         return self.get_queryset().owner().for_write_up(write_up_uuid, collection_type)
 
+    def get_all_contributors_for_write_up(self):
+        return self.get_queryset().all().prefetch_related('permissions', 'contributor')
+
 
 # TODO: create celery task to validate and update per write_up engagement based XP/money for user
 class ContributorList(models.Model):
@@ -256,6 +263,12 @@ class ContributorList(models.Model):
 
     def __unicode__(self):
         return "'%s' of '%s'" % (self.contributor, self.write_up)
+
+    def get_contributor_handler(self):
+        if isinstance(self.contributor, Publication):
+            return self.contributor.handler
+        elif isinstance(self.contributor, get_user_model()):
+            return self.contributor.username
 
 
 class BaseDesign(models.Model):
