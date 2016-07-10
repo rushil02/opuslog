@@ -36,7 +36,7 @@ def notify_async(user_object_id, user_content_type, notification_type, write_up_
     )
 
 
-@app.task(name='generate_async_notification_for_list_of_users')
+@app.task(name='notification_for_list_of_users')
 def notify_list_async(model, method, method_kwargs, entity, notification_type, write_up_id=None, **kwargs):
     """
     Used when you need to send a notification to a list of users/publication
@@ -61,3 +61,22 @@ def notify_list_async(model, method, method_kwargs, entity, notification_type, w
         getattr(__import__('essential.models', fromlist=['Notification']), 'Notification').objects.notify(
             user=user, notification_type=notification_type, write_up=write_up, **kwargs
         )
+
+
+@app.task(name='notification_for_self_publication')
+def notify_self_async(publication_id, notification_type, write_up_id=None, **kwargs):
+    publication = getattr(__import__(
+        'publication.models', fromlist=['Publication']), 'Publication').objects.get(id=publication_id)
+
+    if kwargs.get('self_verbose', None):
+        kwargs.update({'verbose': kwargs['self_verbose']})
+
+    if not (kwargs.get('template_key', None) or kwargs.get('verbose', None)):
+        kwargs.update({'template_key': 'internal_publication'})
+
+    write_up = None
+    if write_up_id:
+        write_up = getattr(__import__('write_up.models', fromlist=['WriteUp']), 'WriteUp').objects.get(id=write_up_id)
+    getattr(__import__('essential.models', fromlist=['Notification']), 'Notification').objects.notify(
+        user=publication, notification_type=notification_type, write_up=write_up, **kwargs
+    )

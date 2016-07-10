@@ -2,6 +2,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
+from essential.tasks import notify_self_async
 from publication.permissions import PublicationContributorPermissionMixin
 from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
     SubscriberView, VoteCommentView
@@ -23,6 +24,8 @@ class GetActor(object):
     def get_success_url_prefix(self):
         return ""
 
+    def get_actor_for_activity(self):
+        return self.get_actor().contributorlist_set.get(contributor=self.get_user())
 
     def get_user(self):
         return self.request.user
@@ -32,9 +35,23 @@ class GetActor(object):
 
     def notify_single(self, **kwargs):
         super(GetActor, self).notify_single(contributor=self.get_user().username, **kwargs)
+        self.notify_self(**kwargs)
 
     def notify_multiple(self, **kwargs):
         super(GetActor, self).notify_multiple(contributor=self.get_user().username, **kwargs)
+        self.notify_self(**kwargs)
+
+    def notify_self(self, **kwargs):
+        kwargs.pop('template_key', None)
+        kwargs.pop('verbose', None)
+        notify_self_async.delay(
+            publication_id=self.get_actor().id,
+            actor_handler=self.get_actor().handler,
+            contributor=self.get_user().username,
+            redirect_url=self.get_redirect_url(),
+            permissions=self.get_permissions(),
+            **kwargs
+        )
 
 
 class PublicationThreads(GetActor, PublicationContributorPermissionMixin, ThreadView):
@@ -51,7 +68,14 @@ class PublicationThreads(GetActor, PublicationContributorPermissionMixin, Thread
             raise SuspiciousOperation(e.message)
 
     def get_thread_query(self, thread_id):
-        return get_object_or_404(Thread, id=thread_id, threadmember__publication=self.get_actor())
+        return get_object_or_404(Thread, id=thread_id, publication=self.get_actor())
+
+    def post(self, request, *args, **kwargs):
+        response, subject = super(PublicationThreads, self).post(request, *args, **kwargs)
+        self.notify_self(
+            notification_type='NT', acted_on=subject
+        )
+        return response
 
 
 class AddDeleteMemberToThread(GetActor, PublicationContributorPermissionMixin, AddDeleteMemberView):

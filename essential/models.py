@@ -207,16 +207,19 @@ class Notification(models.Model):
         'NT': {'single':
                    {'template': "'{} created a new thread with subject '{}'",
                     'args': [{'data': 'actor'}, {'data': 'acted-on'}, ]},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' edited the Thread of subject '{}' to '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
                'image': "",
                },
-        '`UT`': {'single':
-                     {'template': "'{}' edited the Thread of subject '{}' to '{}'",
-                      'args': [{'data': 'actor_handler'}, {'data': 'old_subject'}, {'data': 'new_subject'}, ]},
-                 'internal_publication':
-                     {'template': "'{}' of Publication '{}' edited the Thread of subject '{}' to '{}'",
-                      'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
-                 'image': "",
-                 },
+        'UT': {'single':
+                   {'template': "'{}' edited the Thread of subject '{}' to '{}'",
+                    'args': [{'data': 'actor_handler'}, {'data': 'old_subject'}, {'data': 'new_subject'}, ]},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' edited the Thread of subject '{}' to '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
+               'image': "",
+               },
     }
     notification_type = models.CharField(max_length=2, choices=CHOICE)
 

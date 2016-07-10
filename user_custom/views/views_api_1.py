@@ -30,7 +30,10 @@ class UserThreads(GetActor, ThreadView):
         return Thread.objects.filter(threadmember__user=self.get_actor()).prefetch_related('created_by')
 
     def get_thread_query(self, thread_id):
-        return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
+        return get_object_or_404(Thread, id=thread_id, user=self.get_actor())
+
+    def post(self, request, *args, **kwargs):
+        return super(UserThreads, self).post(request, *args, **kwargs)[0]
 
 
 class AddDeleteMemberToThread(GetActor, AddDeleteMemberView):
