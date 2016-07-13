@@ -48,6 +48,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.conf import settings
 
+from essential.models import Permission
 from publication.models import Publication
 
 
@@ -108,9 +109,12 @@ class WriteUp(models.Model):
 
     class CustomMeta:
         permission_list = [
-            {'name': 'Can Edit article', 'code_name': 'can_edit',
+            {'name': 'Can Edit Write Up', 'code_name': 'can_edit',
              'help_text': 'Allow contributor to edit Write up',
              'for': 'W'},
+            {'name': 'Can Create Write Up', 'code_name': 'can_create_write_up',
+             'help_text': 'Allow contributor to create Write up',
+             'for': 'P'},
         ]
 
     def __unicode__(self):
@@ -119,6 +123,8 @@ class WriteUp(models.Model):
     def set_owner(self, owner):  # fixme: add all writeup permissions to owner
         contributor = ContributorList.objects.create_contributor(owner, write_up=self, is_owner=True, share_XP=100,
                                                                  share_money=100)
+        write_up_permissions = Permission.objects.get_permissions_for_write_up()
+        contributor.permissions.add(*write_up_permissions)
         return contributor
 
     def create_write_up_profile(self, user):

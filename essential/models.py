@@ -284,8 +284,12 @@ class Tag(models.Model):
 
 
 class GroupManager(models.Manager):
-    def get_other_groups(self):
+    def get_user_groups(self):
         return self.get_queryset().filter(contributed_group=False)
+
+    def get_groups_for_publication_user_to_create(self, contributor):
+        return self.get_queryset().filter(contributed_group=False, groupcontributor__contributor=contributor,
+                                          groupcontributor__permissions__code_name='can_create_write_up')
 
 
 class Group(models.Model):

@@ -20,6 +20,9 @@ class GetActor(object):
     def get_actor_for_activity(self):
         return self.get_actor()
 
+    def get_success_url_prefix(self):
+        return ""
+
 
 class UserThreads(GetActor, ThreadView):
     """ Implements ThreadView for User entity. """

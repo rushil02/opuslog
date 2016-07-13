@@ -24,11 +24,11 @@ class UserPublicationMixin(object):
 
 class WriteupPermissionMixin(object):
     contributor = None
-    permissions = {}
+    write_up_permissions = {}
     collection_type = None
 
     def dispatch(self, request, *args, **kwargs):
-        method_permission_list = self.permissions.get(request.method.lower(), None)
+        method_permission_list = self.write_up_permissions.get(request.method.lower(), [])
         if method_permission_list:
             uuid = self.kwargs.get('write_up_uuid')
             try:
@@ -48,6 +48,19 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
     form_class = CreateWriteUpForm
     model = WriteUp
     template_name = "write_up/form_template.html"
+    groups = None
+
+    def get(self, request, *args, **kwargs):
+        self.groups = self.get_groups()
+        if not self.groups:
+            return HttpResponseForbidden()
+        return super(CreateWriteUpView, self).get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        self.groups = self.get_groups()
+        if not self.groups:
+            return HttpResponseForbidden()
+        return super(CreateWriteUpView, self).post(request, *args, **kwargs)
 
     def get_success_url(self):
         write_up = self.object
@@ -66,11 +79,15 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
 
     def get_form_kwargs(self):
         kwargs = super(CreateWriteUpView, self).get_form_kwargs()
-        kwargs.update({'actor': self.get_actor()})
+        kwargs.update({'groups': self.groups})
         return kwargs
+
+    def get_groups(self):
+        raise NotImplementedError
 
 
 class EditWriteUpView(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, BaseUpdateView):
+    # FIXME: change group in this form but who should be able to change i.e define its permission
     form_class = EditWriteUpForm
     model = WriteUp
     template_name = "write_up/form_template.html"
@@ -149,57 +166,6 @@ class EditBaseDesign(UserPublicationMixin, WriteupPermissionMixin, TemplateRespo
 
     def get_success_url_suffix_for_M(self):
         return "/edit_article/" + str(self.write_up.uuid) + '/' + self.kwargs['chapter_index']
-
-
-# class AddUnitView(UserPublicationMixin, TemplateResponseMixin, View, ContextMixin):
-#     template_name = "write_up/form_template.html"
-#     formset_class = CollectionUnitFormSet
-#     model = CollectionUnit
-#     write_up = None
-#     contributor = None
-# 
-#     def get_context_data(self, **kwargs):
-#         if 'formset' not in kwargs:
-#             kwargs['formset'] = self.get_formset()
-#         if self.write_up:
-#             kwargs['write_up'] = self.write_up
-#         return super(AddUnitView, self).get_context_data(**kwargs)
-# 
-#     def get_formset(self):
-#         return self.formset_class(**self.get_formset_kwargs())
-# 
-#     def get_formset_kwargs(self):
-#         kwargs = {}
-#         if self.request.method in ('POST', 'PUT'):
-#             kwargs.update({
-#                 'data': self.request.POST,
-#             })
-#         kwargs.update({'instance': self.write_up})
-#         return kwargs
-# 
-#     def get(self, request, *args, **kwargs):
-#         self.write_up = self.get_write_up()
-#         return self.render_to_response(self.get_context_data())
-# 
-#     def get_write_up(self):
-#         self.contributor = self.kwargs.get('contributor')
-#         return self.contributor.write_up
-# 
-#     def post(self, request, *args, **kwargs):
-#         self.write_up = self.get_write_up()
-#         formset = self.get_formset()
-#         if formset.is_valid():
-#             return self.formset_valid(formset)
-#         else:
-#             return self.formset_invalid(formset)
-# 
-#     def formset_valid(self, formset):
-#         for form in formset:
-#             collection_unit = form.save(commit=False)
-# 
-# 
-#     def formset_invalid(self, formset):
-#         pass
 
 
 class CollectionUnitView(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, ModelFormMixin, View):

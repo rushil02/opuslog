@@ -8,9 +8,8 @@ from write_up.models import WriteUp, BaseDesign, CollectionUnit
 
 class CreateWriteUpForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
-        actor = kwargs.pop('actor')
+        groups = kwargs.pop('groups')
         super(CreateWriteUpForm, self).__init__(*args, **kwargs)
-        groups = actor.group.get_other_groups()
         self.fields['group'] = forms.ModelChoiceField(queryset=groups)
         if groups.count() == 1:
             self.fields['group'].initial = groups[0]

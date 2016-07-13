@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import View
 
 from user_custom.forms import CustomLoginForm, CustomSignupForm
+from user_custom.views.views_api_1 import GetActor
 from write_up.forms import AddContributorForm, EditPermissionFormSet
 from write_up.views import CreateWriteUpView, EditWriteUpView, CollectionUnitView, \
     EditBaseDesign, ContributorRequest
@@ -152,52 +153,45 @@ def user_page(request, user_handler):
     return HttpResponse("You reached on some other users page {%s}" % user_handler)
 
 
-class UserViewMixin(object):
-    def get_actor(self):
-        return self.request.user
-
-    def get_success_url_prefix(self):
-        return ""
-
-
 @method_decorator(login_required, name='dispatch')
-class CreateUserWriteUpView(UserViewMixin, CreateWriteUpView):
-    pass
+class CreateUserWriteUpView(GetActor, CreateWriteUpView):
+    def get_groups(self):
+        return self.get_actor().group.get_user_groups()
 
 
-class EditUserWriteUpView(UserViewMixin, EditWriteUpView):
-    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+class EditUserWriteUpView(GetActor, EditWriteUpView):
+    write_up_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
 
 
 edit_write_up_view = login_required()(EditUserWriteUpView.as_view())
 
 
-class EditUserIndependentArticleView(UserViewMixin, EditBaseDesign):
-    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+class EditUserIndependentArticleView(GetActor, EditBaseDesign):
+    write_up_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     collection_type = 'I'
 
 
 edit_article_view = login_required()(EditUserIndependentArticleView.as_view())
 
 
-class UserCollectionUnitView(UserViewMixin, CollectionUnitView):
-    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+class UserCollectionUnitView(GetActor, CollectionUnitView):
+    write_up_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     collection_type = 'M'
 
 
 collection_unit_view = login_required()(UserCollectionUnitView.as_view())
 
 
-class EditUserCollectionArticleView(UserViewMixin, EditBaseDesign):
-    permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+class EditUserCollectionArticleView(GetActor, EditBaseDesign):
+    write_up_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     collection_type = 'M'
 
 
 edit_collection_article_view = login_required()(EditUserCollectionArticleView.as_view())
 
 
-class UserContributorRequest(UserViewMixin, ContributorRequest):
-    permissions = {'get': ['can_edit']}
+class UserContributorRequest(GetActor, ContributorRequest):
+    write_up_permissions = {'get': ['can_edit']}
 
 
 user_contributor_request_view = login_required()(UserContributorRequest.as_view())
