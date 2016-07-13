@@ -30,10 +30,7 @@ class UserThreads(GetActor, ThreadView):
         return Thread.objects.filter(threadmember__user=self.get_actor()).prefetch_related('created_by')
 
     def get_thread_query(self, thread_id):
-        return get_object_or_404(Thread, id=thread_id, user=self.get_actor())
-
-    def post(self, request, *args, **kwargs):
-        return super(UserThreads, self).post(request, *args, **kwargs)[0]
+        return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
 
 
 class AddDeleteMemberToThread(GetActor, AddDeleteMemberView):
@@ -42,7 +39,7 @@ class AddDeleteMemberToThread(GetActor, AddDeleteMemberView):
     permission_classes = [IsAuthenticated]
 
     def get_thread_query(self, thread_id):
-        return get_object_or_404(Thread, id=thread_id, threadmember__user=self.get_actor())
+        return get_object_or_404(Thread, id=thread_id, user=self.get_actor())
 
 
 class MessageOfThread(GetActor, MessageView):

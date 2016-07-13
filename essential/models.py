@@ -34,7 +34,7 @@ class NotificationManager(models.Manager):
 
         return self.get_queryset().filter(user=user)
 
-    def create_new_notification(self, user, notification_type, template_key, write_up=None, **kwargs):
+    def create_new_notification(self, user, notification_type, template_key, acted_on=None, **kwargs):
         context = {
             'image': kwargs.pop('image_url', None),
             'level': kwargs.pop('level', 'info'),
@@ -42,13 +42,13 @@ class NotificationManager(models.Manager):
         }
 
         notification = Notification(user=user,
-                                    write_up=write_up,
+                                    acted_on=acted_on,
                                     data=kwargs,
                                     notification_type=notification_type)
 
         return notification.save(template_key=template_key, verbose=kwargs.get('verbose', None), context=context)
 
-    def notify(self, user, notification_type, write_up=None, **kwargs):
+    def notify(self, user, notification_type, acted_on=None, **kwargs):
         """
         Call this method to save new notification.
         Checks if a similar notification already exists then increases the
@@ -58,7 +58,7 @@ class NotificationManager(models.Manager):
         if user and notification_type:
             url_append = kwargs.get('redirect_url', None)
             if isinstance(user, get_user_model()):
-                self._notify(user, notification_type, write_up, **kwargs)
+                self._notify(user, notification_type, acted_on, **kwargs)
             elif isinstance(user, getattr(__import__('publication.models', fromlist=['Publication']), 'Publication')):
                 perm = ['receive_Notification']
                 perm.extend(kwargs.pop('permissions', []))
@@ -68,7 +68,7 @@ class NotificationManager(models.Manager):
                     kwargs['redirect_url'] = '/pub/' + user.handler + kwargs['redirect_url']
                 for publication_user in contributors:
                     if not publication_user.contributor.username == acted_contributor:
-                        self._notify(publication_user.contributor, notification_type, write_up, **kwargs)
+                        self._notify(publication_user.contributor, notification_type, acted_on, **kwargs)
             else:
                 ActivityLog.objects.create_log(
                     level='C', message="Notification user object is neither of model 'User' nor 'Publication'",
@@ -83,19 +83,32 @@ class NotificationManager(models.Manager):
                 arguments={'kwargs': kwargs},
             )
 
-    def _notify(self, user, notification_type, write_up=None, **kwargs):
+    def _notify(self, user, notification_type, acted_on=None, **kwargs):
+        if not NotificationSetting.objects.check_user_settings(user, notification_type):
+            print "checking"
+            return
         template_key = kwargs.pop('template_key', 'many')
         try:
-            if template_key == 'single' or kwargs.get('verbose', None):
+            if template_key != 'many' or kwargs.get('verbose', None):
+                print "template not many"
                 raise Notification.DoesNotExist
+
+            content_type = None
+            object_id = None
+            if acted_on:
+                print "inside"
+                content_type = ContentType.objects.get_for_model(acted_on)
+                object_id = acted_on.id
+            print "here too"
             notification = self.get_queryset().get(user=user,
-                                                   write_up=write_up,
+                                                   content_type=content_type,
+                                                   object_id=object_id,
                                                    notification_type=notification_type,
                                                    notified=False)
         except Notification.DoesNotExist:
             if template_key == 'many':
                 template_key = 'single'
-            self.create_new_notification(user, notification_type, template_key, write_up, **kwargs)
+            self.create_new_notification(user, notification_type, template_key, acted_on, **kwargs)
         else:
             notification.add_on_actor_count += 1
             notification.save(template_key=template_key, verbose=kwargs.get('verbose', None))
@@ -138,10 +151,14 @@ class Notification(models.Model):
         'extra': ...,
         ...
         }
+
+    'internal_publication' = True marks that the notification object
     """
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    write_up = models.ForeignKey('write_up.WriteUp', null=True, blank=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    acted_on = GenericForeignKey('content_type', 'object_id')
 
     CHOICE = (
         ('CO', 'Comment'),
@@ -149,12 +166,17 @@ class Notification(models.Model):
         ('CT', 'Comment Tagged'),
         ('UC', 'UpVote Comment'),
         ('DC', 'DownVote Comment'),
+
         ('UW', 'UpVote Write up'),
         ('DW', 'DownVote Write up'),
+
         ('NT', 'New Thread'),
         ('UT', 'Update Thread subject'),
-        ('RL', 'Request Accept/Deny'),  # TODO: append notification id in frontend to its url
+        ('DM', 'Remove member from Thread'),
+        ('NM', 'New Message'),
+        ('RL', 'Requests'),  # TODO: append notification id in frontend to its url
     )
+    # region display-details
     display_details = {
         'CO': {'single':
                    {'template': '{} commented on your creation {}',
@@ -208,8 +230,8 @@ class Notification(models.Model):
                    {'template': "'{} created a new thread with subject '{}'",
                     'args': [{'data': 'actor'}, {'data': 'acted-on'}, ]},
                'internal_publication':
-                   {'template': "'{}' of Publication '{}' edited the Thread of subject '{}' to '{}'",
-                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
+                   {'template': "'{}' of Publication '{}' created a new Thread of subject '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'acted-on'}, ]},
                'image': "",
                },
         'UT': {'single':
@@ -217,11 +239,45 @@ class Notification(models.Model):
                     'args': [{'data': 'actor_handler'}, {'data': 'old_subject'}, {'data': 'new_subject'}, ]},
                'internal_publication':
                    {'template': "'{}' of Publication '{}' edited the Thread of subject '{}' to '{}'",
-                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'extra'}, {'data': 'acted-on'}, ]},
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'old_subject'},
+                             {'data': 'new_subject'}, ]},
+               'image': "",
+               },
+        'NM': {'single':
+                   {'template': "'{}' sent a message on thread '{}'",
+                    'args': [{'data': 'actor_handler'}, {'data': 'thread'}, ]},
+               'many': {'template': '{} and {} others sent a message on thread {}',
+                        'args': [{'data': 'actor'}, 'add_on_actor_count', {'data': 'thread'}, ]},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' sent a message on thread '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'thread'}]},
+               'image': "",
+               },
+        'DM': {'directed_to':
+                   {'template': "'{}' removed you from Thread '{}'",
+                    'args': [{'data': 'actor_handler'}, {'data': 'thread'}, ]},
+               'single':
+                   {'template': "'{}' removed '{}' from Thread '{}'",
+                    'args': [{'data': 'actor_handler'}, {'data': 'acted_on'}, {'data': 'thread'}, ]},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' removed {} from Thread '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'acted_on_user'},
+                             {'data': 'thread'}, ]},
+               'image': "",
+               },
+        'RL': {'add_thread_member':
+                   {'template': "'{}' sent a request to add you on Thread '{}'",
+                    'args': [{'data': 'actor_handler'}, {'data': 'thread'}]},
+               'add_thread_member_internal_publication':
+                   {'template': "'{}' of Publication '{}' sent a request to add '{}' on Thread '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'user_handler'},
+                             {'data': 'thread'}, ]},
+
                'image': "",
                },
     }
-    notification_type = models.CharField(max_length=2, choices=CHOICE)
+    # endregion
+    notification_type = models.CharField(max_length=3, choices=CHOICE)
 
     data = JSONField()
     context = JSONField()
@@ -266,6 +322,29 @@ class Notification(models.Model):
     def get_default_image(self):
         foo = self.display_details
         return ""
+
+
+class NotificationSettingManager(models.Manager):
+    def check_user_settings(self, user, notification_type):
+        if self.get_queryset().filter(user=user, notification_type=notification_type, receive=True).exists():
+            return True
+        else:
+            print "failed"
+            return False
+
+
+class NotificationSetting(models.Model):  # TODO: create notification settings when user signs up
+    """
+    Saves settings for a user irrespective of publication contribution,
+    whether to receive a type of notification or not.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    notification_type = models.CharField(max_length=3, choices=Notification.CHOICE)
+    receive = models.BooleanField(default=True)
+    update_time = models.DateTimeField(auto_now=True)
+
+    objects = NotificationSettingManager()
 
 
 class Tag(models.Model):

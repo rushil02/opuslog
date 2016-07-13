@@ -78,13 +78,16 @@ class Message(models.Model):
 
 class ThreadMemberManager(models.Manager):
     def get_thread_members_for_thread(self, thread_id):
-        return self.get_queryset().filter(thread__id=thread_id).prefetch_related()
+        return self.get_queryset().filter(thread__id=thread_id, removed=False).prefetch_related()
 
     def add_thread_member_request(self, **kwargs):
         request_log = kwargs.get('request_log')
         answer = kwargs.get('answer')
         if answer:
-            self.get_queryset().create(thread=request_log.request_for, entity=request_log.request_to)
+            self.get_queryset().update_or_create(thread=request_log.request_for,
+                                                 content_type=request_log.request_to_content_type,
+                                                 object_id=request_log.request_to_object_id,
+                                                 defaults={'removed': False})
 
         return '/url/'  # TODO: view url on accept and reject
 

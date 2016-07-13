@@ -29,14 +29,16 @@ class AddMemberSerializer(serializers.Serializer):
 
     def __init__(self, *args, **kwargs):
         self.thread = kwargs.pop('thread', None)
+        self.method_type = kwargs.pop('method_type', None)
         super(AddMemberSerializer, self).__init__(*args, **kwargs)
 
     entity_handler = serializers.CharField(max_length=30)
     obj = None
 
     def validate_entity_handler(self, value):
-        handler = value
+        return getattr(self, self.method_type + '_validate')(value)
 
+    def post_validate(self, handler):
         try:
             self.obj = get_user_model().objects.get(username=handler)
         except ObjectDoesNotExist:
@@ -50,7 +52,17 @@ class AddMemberSerializer(serializers.Serializer):
         else:
             if self.thread.threadmember_set.filter(user=self.obj).exists():
                 raise ValidationError("Member already exists")
-        return value
+        return handler
+
+    def delete_validate(self, handler):
+        if not self.thread.threadmember_set.filter(user__username=self.obj, removed=False).exists():
+            raise ValidationError("Member does not exist")
+
+        elif not self.thread.threadmember_set.filter(publication__handler=handler, removed=False).exists():
+            raise ValidationError("Member does not exists")
+
+        else:
+            return handler
 
 
 class ThreadSerializer(serializers.ModelSerializer):

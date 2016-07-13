@@ -27,6 +27,6 @@ def process_comment(comment_id, actor_handler):
         else:
             if not user == comment.actor:
                 Notification.objects.notify(
-                    user=user, write_up=comment.write_up, notification_type='CT', actor_handler=actor_handler,
+                    user=user, acted_on=comment.write_up, notification_type='CT', actor_handler=actor_handler,
                     template_key='single'
                 )

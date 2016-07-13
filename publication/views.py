@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -33,17 +34,21 @@ class GetActor(object):
     def get_redirect_url(self):
         return ""
 
-    def notify_single(self, **kwargs):
+    def notify_single(self, notify_self_pub=True, **kwargs):
         super(GetActor, self).notify_single(contributor=self.get_user().username, **kwargs)
-        self.notify_self(**kwargs)
+        if notify_self_pub:
+            self.notify_self(**kwargs)
 
-    def notify_multiple(self, **kwargs):
+    def notify_multiple(self, notify_self_pub=True, **kwargs):
         super(GetActor, self).notify_multiple(contributor=self.get_user().username, **kwargs)
-        self.notify_self(**kwargs)
+        if notify_self_pub:
+            self.notify_self(**kwargs)
 
     def notify_self(self, **kwargs):
-        kwargs.pop('template_key', None)
-        kwargs.pop('verbose', None)
+        acted_on = kwargs.pop('acted_on', None)
+        if acted_on:
+            kwargs.update({'acted_on_id': acted_on.id,
+                           'acted_on_content_type_id': ContentType.objects.get_for_model(acted_on).id})
         notify_self_async.delay(
             publication_id=self.get_actor().id,
             actor_handler=self.get_actor().handler,
@@ -68,14 +73,12 @@ class PublicationThreads(GetActor, PublicationContributorPermissionMixin, Thread
             raise SuspiciousOperation(e.message)
 
     def get_thread_query(self, thread_id):
-        return get_object_or_404(Thread, id=thread_id, publication=self.get_actor())
+        return get_object_or_404(Thread, id=thread_id, threadmember__publication=self.get_actor())
 
-    def post(self, request, *args, **kwargs):
-        response, subject = super(PublicationThreads, self).post(request, *args, **kwargs)
+    def notify_post(self, obj):
         self.notify_self(
-            notification_type='NT', acted_on=subject
+            notification_type='NT', acted_on=obj,
         )
-        return response
 
 
 class AddDeleteMemberToThread(GetActor, PublicationContributorPermissionMixin, AddDeleteMemberView):
@@ -85,7 +88,7 @@ class AddDeleteMemberToThread(GetActor, PublicationContributorPermissionMixin, A
     permission_classes = []
 
     def get_thread_query(self, thread_id):
-        return get_object_or_404(Thread, id=thread_id, threadmember__publication=self.get_actor())
+        return get_object_or_404(Thread, id=thread_id, publication=self.get_actor())
 
 
 class MessageOfThread(GetActor, PublicationContributorPermissionMixin, MessageView):

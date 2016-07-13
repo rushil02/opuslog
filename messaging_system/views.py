@@ -2,6 +2,7 @@ import abc
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
+from django.db.utils import IntegrityError
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
@@ -35,6 +36,10 @@ class Mixin(object):
         return None
 
     def notify_single(self, **kwargs):
+        acted_on = kwargs.pop('acted_on', None)
+        if acted_on:
+            kwargs.update({'acted_on_id': acted_on.id,
+                           'acted_on_content_type_id': ContentType.objects.get_for_model(acted_on).id})
         notify_async.delay(
             redirect_url=self.get_redirect_url(),
             actor_handler=self.get_actor_handler(),
@@ -43,6 +48,10 @@ class Mixin(object):
         )
 
     def notify_multiple(self, **kwargs):
+        acted_on = kwargs.pop('acted_on', None)
+        if acted_on:
+            kwargs.update({'acted_on_id': acted_on.id,
+                           'acted_on_content_type_id': ContentType.objects.get_for_model(acted_on).id})
         notify_list_async.delay(
             actor_handler=self.get_actor_handler(),
             redirect_url=self.get_redirect_url(),
@@ -61,6 +70,9 @@ class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove
 
     obj = None
 
+    def notify_post(self, subject):
+        return
+
     def post(self, request, *args, **kwargs):
         """ Create new Thread and assign thread creator as thread member """
 
@@ -72,7 +84,8 @@ class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove
             request, actor=self.get_actor_for_activity(), entity=obj, view='ThreadView',
             arguments={'args': args, 'kwargs': kwargs}, act_type='create_thread'
         )
-        return Response(serializer.data), obj.subject
+        self.notify_post(obj)
+        return Response(serializer.data)
 
     def get_object(self):
         if self.obj:
@@ -93,9 +106,10 @@ class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove
             request, actor=self.get_actor_for_activity(), entity=obj, view='ThreadView',
             arguments={'args': args, 'kwargs': kwargs}, act_type='update_thread_subject'
         )
-        notify_list_async.delay(
+        self.notify_multiple(
             model='messaging_system.ThreadMember', method='get_thread_members_for_thread',
             method_kwargs={'thread_id': obj.id}, entity='entity', notification_type='UT',
+            acted_on=obj,
             new_subject=obj.subject, old_subject=old_subject,
             template_key='single',
         )
@@ -103,7 +117,7 @@ class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove
 
 
 class AddDeleteMemberView(Mixin, GenericAPIView):
-    """ Add/Delete a member for a thread. """
+    """ Add/Delete a member for a thread. Only owner can add or delete a member. """
 
     serializer_class = AddMemberSerializer
 
@@ -119,22 +133,28 @@ class AddDeleteMemberView(Mixin, GenericAPIView):
             raise SuspiciousOperation("No object found")
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, thread=self.get_object())
+        serializer = self.get_serializer(data=request.data, thread=self.get_object(), method_type='post')
         serializer.is_valid(raise_exception=True)
         try:
             obj = RequestLog.objects.create(request_for=self.get_object(), request_to=serializer.obj,
                                             request_from=self.get_actor())
+        except IntegrityError:
+            raise ValidationError("A request has already been sent to the desired user")
         except Exception as e:
             raise ValidationError(e.message)
         else:
             self.notify_single(
                 user_object_id=serializer.obj.id,
                 user_content_type=ContentType.objects.get_for_model(serializer.obj).id,
+                user_handler=serializer.obj.get_handler(),
                 notification_type='RL',
                 file_path='messaging_system.models',
                 attr_path='ThreadMember.objects.add_thread_member_request',
                 request_log_id=obj.id,
-                verbose='You have got a new request'
+                acted_on=self.get_object(),
+                thread=self.get_object().subject,
+                template_key='add_thread_member',
+                self_template_key='add_thread_member_internal_publication'
             )
             ActivityLog.objects.create_log(
                 request, actor=self.get_actor_for_activity(), entity=obj, view='AddDeleteMemberView',
@@ -143,7 +163,7 @@ class AddDeleteMemberView(Mixin, GenericAPIView):
         return Response(serializer.data)
 
     def delete(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, thread=self.get_object(), method_type='delete')
         serializer.is_valid(raise_exception=True)
         try:
             obj = ThreadMember.objects.get(thread=self.get_object(), entity=serializer.obj).update(removed=True)
@@ -153,6 +173,23 @@ class AddDeleteMemberView(Mixin, GenericAPIView):
             ActivityLog.objects.create_log(
                 request, actor=self.get_actor_for_activity(), entity=obj, view='AddDeleteMemberView',
                 arguments={'args': args, 'kwargs': kwargs}, act_type='delete_member'
+            )
+            self.notify_single(
+                notify_self_pub=False,
+                user_object_id=serializer.obj.id,
+                user_content_type=ContentType.objects.get_for_model(serializer.obj).id,
+                notification_type='DM',
+                template_key='directed_to',
+                thread=self.get_object().subject,
+                acted_on=self.get_object(),
+            )
+            self.notify_multiple(
+                model='messaging_system.ThreadMember', method='get_thread_members_for_thread',
+                method_kwargs={'thread_id': obj.id}, entity='entity', notification_type='UT',
+                thread=self.get_object().subject,
+                template_key='single',
+                acted_on=self.get_object(),
+                acted_on_user=serializer.obj.get_handler(),
             )
         return Response(serializer.data)
 
@@ -189,7 +226,12 @@ class MessageView(Mixin, ListAPIView):
             request, actor=self.get_actor_for_activity(), entity=obj, view='MessageView',
             arguments={'args': args, 'kwargs': kwargs}, act_type='send_message'
         )
-        # TODO: create notifications, remove members which are mute
+        self.notify_multiple(
+            model='messaging_system.ThreadMember', method='get_thread_members_for_thread',
+            method_kwargs={'thread_id': self.get_object().id}, entity='entity', notification_type='NM',
+            thread=self.get_object().subject,
+            acted_on=self.get_object(),
+        )
         return Response(serializer.data)
 
     def get_thread_member(self):
