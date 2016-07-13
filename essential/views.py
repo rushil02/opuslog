@@ -55,7 +55,6 @@ class AcceptDenyRequest(Mixin, GenericAPIView):
         req_obj = get_object_or_404(RequestLog, id=notification_obj.data['request_log_id'], status='P')
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        print notification_obj, req_obj, serializer.data
         try:
             file_path = notification_obj.data['file_path']
             attr_list = notification_obj.data['attr_path'].split('.')

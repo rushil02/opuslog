@@ -1,63 +1,18 @@
-import abc
-
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
 from django.db.utils import IntegrityError
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
-from admin_custom.models import ActivityLog
+from custom_package.mixins import AbstractMixin
 from essential.models import RequestLog
-from essential.tasks import notify_list_async, notify_async
 from messaging_system.models import Message, ThreadMember
 from messaging_system.serializers import ThreadSerializer, MessageSerializer, AddMemberSerializer
 
 
-class Mixin(object):
-    def get_actor(self):
-        raise NotImplementedError("Override in subclass")
-
+class Mixin(AbstractMixin):
     def get_thread_query(self, thread_id):
         raise NotImplementedError("Override in subclass")
-
-    def get_actor_for_activity(self):
-        raise NotImplementedError("Override in subclass")
-
-    def get_actor_handler(self):
-        return NotImplementedError("Override in Subclass")
-
-    @abc.abstractmethod
-    def get_permissions(self):
-        return []
-
-    @abc.abstractmethod
-    def get_redirect_url(self):
-        return None
-
-    def notify_single(self, **kwargs):
-        acted_on = kwargs.pop('acted_on', None)
-        if acted_on:
-            kwargs.update({'acted_on_id': acted_on.id,
-                           'acted_on_content_type_id': ContentType.objects.get_for_model(acted_on).id})
-        notify_async.delay(
-            redirect_url=self.get_redirect_url(),
-            actor_handler=self.get_actor_handler(),
-            permissions=self.get_permissions(),
-            **kwargs
-        )
-
-    def notify_multiple(self, **kwargs):
-        acted_on = kwargs.pop('acted_on', None)
-        if acted_on:
-            kwargs.update({'acted_on_id': acted_on.id,
-                           'acted_on_content_type_id': ContentType.objects.get_for_model(acted_on).id})
-        notify_list_async.delay(
-            actor_handler=self.get_actor_handler(),
-            redirect_url=self.get_redirect_url(),
-            permissions=self.get_permissions(),
-            **kwargs
-        )
 
 
 class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove Threads with no user/publication
@@ -70,7 +25,7 @@ class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove
 
     obj = None
 
-    def notify_post(self, subject):
+    def notify_post(self, obj):
         return
 
     def post(self, request, *args, **kwargs):
@@ -80,10 +35,7 @@ class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove
         serializer.is_valid(raise_exception=True)
         obj = serializer.save(created_by=request.user)
         obj.threadmember_set.create(entity=self.get_actor())
-        ActivityLog.objects.create_log(
-            request, actor=self.get_actor_for_activity(), entity=obj, view='ThreadView',
-            arguments={'args': args, 'kwargs': kwargs}, act_type='create_thread'
-        )
+        self.log(request, obj, args, kwargs, 'create_thread', 'messaging_system.views.ThreadView.post')
         self.notify_post(obj)
         return Response(serializer.data)
 
@@ -102,15 +54,11 @@ class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove
         serializer = self.get_serializer(self.get_object(), data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save()
-        ActivityLog.objects.create_log(
-            request, actor=self.get_actor_for_activity(), entity=obj, view='ThreadView',
-            arguments={'args': args, 'kwargs': kwargs}, act_type='update_thread_subject'
-        )
+        self.log(request, obj, args, kwargs, 'update_thread_subject', 'messaging_system.views.ThreadView.patch')
         self.notify_multiple(
             model='messaging_system.ThreadMember', method='get_thread_members_for_thread',
             method_kwargs={'thread_id': obj.id}, entity='entity', notification_type='UT',
-            acted_on=obj,
-            new_subject=obj.subject, old_subject=old_subject,
+            acted_on=obj, old_subject=old_subject,
             template_key='single',
         )
         return Response(serializer.data)
@@ -144,22 +92,17 @@ class AddDeleteMemberView(Mixin, GenericAPIView):
             raise ValidationError(e.message)
         else:
             self.notify_single(
-                user_object_id=serializer.obj.id,
-                user_content_type=ContentType.objects.get_for_model(serializer.obj).id,
+                user=serializer.obj,
                 user_handler=serializer.obj.get_handler(),
                 notification_type='RL',
                 file_path='messaging_system.models',
                 attr_path='ThreadMember.objects.add_thread_member_request',
                 request_log_id=obj.id,
                 acted_on=self.get_object(),
-                thread=self.get_object().subject,
                 template_key='add_thread_member',
                 self_template_key='add_thread_member_internal_publication'
             )
-            ActivityLog.objects.create_log(
-                request, actor=self.get_actor_for_activity(), entity=obj, view='AddDeleteMemberView',
-                arguments={'args': args, 'kwargs': kwargs}, act_type='add_member'
-            )
+            self.log(request, obj, args, kwargs, 'add_member', 'messaging_system.views.AddDeleteMemberView.post')
         return Response(serializer.data)
 
     def delete(self, request, *args, **kwargs):
@@ -170,23 +113,17 @@ class AddDeleteMemberView(Mixin, GenericAPIView):
         except Exception as e:
             raise ValidationError(e.message)
         else:
-            ActivityLog.objects.create_log(
-                request, actor=self.get_actor_for_activity(), entity=obj, view='AddDeleteMemberView',
-                arguments={'args': args, 'kwargs': kwargs}, act_type='delete_member'
-            )
+            self.log(request, obj, args, kwargs, 'delete_member', 'messaging_system.views.AddDeleteMemberView.delete')
             self.notify_single(
                 notify_self_pub=False,
-                user_object_id=serializer.obj.id,
-                user_content_type=ContentType.objects.get_for_model(serializer.obj).id,
+                user=serializer.obj,
                 notification_type='DM',
                 template_key='directed_to',
-                thread=self.get_object().subject,
                 acted_on=self.get_object(),
             )
             self.notify_multiple(
                 model='messaging_system.ThreadMember', method='get_thread_members_for_thread',
                 method_kwargs={'thread_id': obj.id}, entity='entity', notification_type='UT',
-                thread=self.get_object().subject,
                 template_key='single',
                 acted_on=self.get_object(),
                 acted_on_user=serializer.obj.get_handler(),
@@ -207,9 +144,6 @@ class MessageView(Mixin, ListAPIView):
     def get_queryset(self):
         return Message.objects.filter(thread=self.kwargs.get('thread_id'))
 
-    def set_user(self):
-        raise NotImplementedError("Override in subclass")
-
     def get_object(self):
         thread_id = self.kwargs.get('thread_id', None)
         if thread_id:
@@ -222,14 +156,10 @@ class MessageView(Mixin, ListAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save(thread=self.get_object(), sender=self.get_thread_member())
-        ActivityLog.objects.create_log(
-            request, actor=self.get_actor_for_activity(), entity=obj, view='MessageView',
-            arguments={'args': args, 'kwargs': kwargs}, act_type='send_message'
-        )
+        self.log(request, obj, args, kwargs, 'send_message', 'messaging_system.views.MessageView.post')
         self.notify_multiple(
             model='messaging_system.ThreadMember', method='get_thread_members_for_thread',
             method_kwargs={'thread_id': self.get_object().id}, entity='entity', notification_type='NM',
-            thread=self.get_object().subject,
             acted_on=self.get_object(),
         )
         return Response(serializer.data)

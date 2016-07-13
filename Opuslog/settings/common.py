@@ -171,7 +171,7 @@ AUTHENTICATION_BACKENDS = (
     # `allauth` specific authentication methods, such as login by e-mail
     'allauth.account.auth_backends.AuthenticationBackend',
 )
-ACCOUNT_ADAPTER = 'admin_custom.all_auth_adapter.CustomAccountAdapter'
+ACCOUNT_ADAPTER = 'custom_package.all_auth_adapter.CustomAccountAdapter'
 ACCOUNT_AUTHENTICATION_METHOD = 'username'  # Login field
 ACCOUNT_CONFIRM_EMAIL_ON_GET = False  # User has to click a button on the redirected page
 ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = LOGIN_REDIRECT_URL  # Redirect to '/'

@@ -17,9 +17,9 @@ class ActivityLogManager(models.Manager):
                 'ip': self.get_ip(request),
                 'browser_fingerprint': self.get_fingerprint(request),
                 'view_name': str(kwargs.pop('view', "")),
-                'arguments': kwargs.pop('arguments', []),
+                'arguments': kwargs.pop('arguments', {}),
                 'message': str(kwargs.pop('message', "")),
-                'act_type': kwargs.pop('act_type'),
+                'act_type': kwargs.pop('act_type', ""),
                 'extra': kwargs
             }
             self.create(actor=actor, entity=entity, level=level, meta_info=info)

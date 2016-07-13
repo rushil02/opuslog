@@ -4,7 +4,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import SerializerMethodField
 
-from admin_custom.fields import UserPublicationSerializedField, UserPublicationUnicodeField
+from custom_package.fields import UserPublicationSerializedField, UserPublicationUnicodeField
 from messaging_system.models import Thread, ThreadMember, Message
 from publication.models import Publication
 from publication.serializers import PublicationSerializerTwo

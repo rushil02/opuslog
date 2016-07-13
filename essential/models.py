@@ -68,7 +68,8 @@ class NotificationManager(models.Manager):
                     kwargs['redirect_url'] = '/pub/' + user.handler + kwargs['redirect_url']
                 for publication_user in contributors:
                     if not publication_user.contributor.username == acted_contributor:
-                        self._notify(publication_user.contributor, notification_type, acted_on, **kwargs)
+                        self._notify(publication_user.contributor, notification_type, acted_on,
+                                     publication=user ** kwargs)
             else:
                 ActivityLog.objects.create_log(
                     level='C', message="Notification user object is neither of model 'User' nor 'Publication'",
@@ -83,23 +84,20 @@ class NotificationManager(models.Manager):
                 arguments={'kwargs': kwargs},
             )
 
-    def _notify(self, user, notification_type, acted_on=None, **kwargs):
-        if not NotificationSetting.objects.check_user_settings(user, notification_type):
-            print "checking"
+    def _notify(self, user, notification_type, acted_on=None, publication=None, **kwargs):
+        if not NotificationSetting.objects.check_user_settings(user, notification_type, publication):
             return
         template_key = kwargs.pop('template_key', 'many')
         try:
             if template_key != 'many' or kwargs.get('verbose', None):
-                print "template not many"
                 raise Notification.DoesNotExist
 
             content_type = None
             object_id = None
             if acted_on:
-                print "inside"
                 content_type = ContentType.objects.get_for_model(acted_on)
                 object_id = acted_on.id
-            print "here too"
+
             notification = self.get_queryset().get(user=user,
                                                    content_type=content_type,
                                                    object_id=object_id,
@@ -167,6 +165,9 @@ class Notification(models.Model):
         ('UC', 'UpVote Comment'),
         ('DC', 'DownVote Comment'),
 
+        ('SU', 'Subscribe'),
+        ('US', 'Unsubscribe'),
+
         ('UW', 'UpVote Write up'),
         ('DW', 'DownVote Write up'),
 
@@ -180,101 +181,118 @@ class Notification(models.Model):
     display_details = {
         'CO': {'single':
                    {'template': '{} commented on your creation {}',
-                    'args': [{'data': 'actor'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, 'acted_on.title']},
                'many': {'template': '{} and {} others commented on your creation {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'acted_on.title']},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' commented on creation '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, 'acted_on.title']},
                'image': "",
                },
         'CR': {'single':
                    {'template': '{} replied to your comment on {}',
-                    'args': [{'data': 'actor'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, 'acted_on.title']},
                'many':
                    {'template': '{} and {} others replied to your comment on {}',
-                    'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+                    'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'acted_on.title']},
                'image': "",
                },
         'CT': {'single':
                    {'template': '{} tagged you in a comment on {}',
-                    'args': [{'data': 'actor'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, 'acted_on.title']},
                'image': "",
                },
         'UC': {'single':
                    {"template": '{} up voted your comment on {}',
-                    'args': [{'data': 'actor'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, 'write_up']},
                'many': {'template': '{} and {} others up voted your comment on {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
                'image': "",
                },
         'DC': {'single':
                    {'template': '{} down voted your comment on {}',
-                    'args': [{'data': 'actor'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, 'write_up']},
                'many': {'template': '{} and {} others down voted your comment on {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
+               'image': "",
+               },
+        'SU': {'single':
+                   {"template": '{} up voted your comment on {}',
+                    'args': [{'data': 'actor_handler'}, 'write_up']},
+               'many': {'template': '{} and {} others up voted your comment on {}',
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
+               'image': "",
+               },
+        'US': {'single':
+                   {"template": '{} up voted your comment on {}',
+                    'args': [{'data': 'actor_handler'}, 'write_up']},
+               'many': {'template': '{} and {} others up voted your comment on {}',
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
                'image': "",
                },
         'UW': {'single':
                    {'template': '{} up voted your creation {}',
-                    'args': [{'data': 'actor'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, 'acted_on.title']},
                'many': {'template': '{} and {} others up voted your comment on {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'acted_on.title']},
                'image': "",
                },
         'DW': {'single':
                    {'template': '{} down voted your creation {}',
-                    'args': [{'data': 'actor'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, 'write_up']},
                'many': {'template': '{} and {} others down voted your creation {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', 'write_up']},
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
                'image': "",
                },
-        'NT': {'single':
-                   {'template': "'{} created a new thread with subject '{}'",
-                    'args': [{'data': 'actor'}, {'data': 'acted-on'}, ]},
-               'internal_publication':
+
+        # region messaging system
+        'NT': {'internal_publication':
                    {'template': "'{}' of Publication '{}' created a new Thread of subject '{}'",
-                    'args': [{'data': 'contributor'}, {'data': 'actor'}, {'data': 'acted-on'}, ]},
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, 'acted_on.subject']},
                'image': "",
                },
         'UT': {'single':
                    {'template': "'{}' edited the Thread of subject '{}' to '{}'",
-                    'args': [{'data': 'actor_handler'}, {'data': 'old_subject'}, {'data': 'new_subject'}, ]},
+                    'args': [{'data': 'actor_handler'}, {'data': 'old_subject'}, 'acted_on.subject', ]},
                'internal_publication':
                    {'template': "'{}' of Publication '{}' edited the Thread of subject '{}' to '{}'",
                     'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'old_subject'},
-                             {'data': 'new_subject'}, ]},
-               'image': "",
-               },
-        'NM': {'single':
-                   {'template': "'{}' sent a message on thread '{}'",
-                    'args': [{'data': 'actor_handler'}, {'data': 'thread'}, ]},
-               'many': {'template': '{} and {} others sent a message on thread {}',
-                        'args': [{'data': 'actor'}, 'add_on_actor_count', {'data': 'thread'}, ]},
-               'internal_publication':
-                   {'template': "'{}' of Publication '{}' sent a message on thread '{}'",
-                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'thread'}]},
-               'image': "",
-               },
-        'DM': {'directed_to':
-                   {'template': "'{}' removed you from Thread '{}'",
-                    'args': [{'data': 'actor_handler'}, {'data': 'thread'}, ]},
-               'single':
-                   {'template': "'{}' removed '{}' from Thread '{}'",
-                    'args': [{'data': 'actor_handler'}, {'data': 'acted_on'}, {'data': 'thread'}, ]},
-               'internal_publication':
-                   {'template': "'{}' of Publication '{}' removed {} from Thread '{}'",
-                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'acted_on_user'},
-                             {'data': 'thread'}, ]},
+                             'acted_on.subject']},
                'image': "",
                },
         'RL': {'add_thread_member':
                    {'template': "'{}' sent a request to add you on Thread '{}'",
-                    'args': [{'data': 'actor_handler'}, {'data': 'thread'}]},
+                    'args': [{'data': 'actor_handler'}, 'acted_on.subject']},
                'add_thread_member_internal_publication':
                    {'template': "'{}' of Publication '{}' sent a request to add '{}' on Thread '{}'",
                     'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'user_handler'},
-                             {'data': 'thread'}, ]},
+                             'acted_on.subject']},
 
                'image': "",
                },
+        'DM': {'directed_to':
+                   {'template': "'{}' removed you from Thread '{}'",
+                    'args': [{'data': 'actor_handler'}, 'acted_on.subject', ]},
+               'single':
+                   {'template': "'{}' removed '{}' from Thread '{}'",
+                    'args': [{'data': 'actor_handler'}, {'data': 'acted_on_user'}, 'acted_on.subject', ]},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' removed {} from Thread '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'acted_on_user'},
+                             'acted_on.subject', ]},
+               'image': "",
+               },
+        'NM': {'single':
+                   {'template': "'{}' sent a message on thread '{}'",
+                    'args': [{'data': 'actor_handler'}, 'acted_on.subject', ]},
+               'many': {'template': '{} and {} others sent a message on thread {}',
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'acted_on.subject', ]},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' sent a message on thread '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, 'acted_on.subject']},
+               'image': "",
+               },
+        # endregion
     }
     # endregion
     notification_type = models.CharField(max_length=3, choices=CHOICE)
@@ -301,9 +319,11 @@ class Notification(models.Model):
     def save(self, *args, **kwargs):
         template_key = kwargs.pop('template_key', 'single')
         verbose = kwargs.pop('verbose', None)
-        self.context = kwargs.pop('context')
-        if not self.context['image']:
-            self.context['image'] = self.get_default_image()
+        context = kwargs.pop('context', None)
+        if context:
+            self.context = context
+            if not self.context['image']:
+                self.context['image'] = self.get_default_image()
         self.verbose = verbose if verbose else self.get_verbose(self.notification_type, template_key)
         super(Notification, self).save(*args, **kwargs)
 
@@ -316,7 +336,11 @@ class Notification(models.Model):
             if isinstance(arg, dict):
                 args.append(self.data[arg['data']])
             else:
-                args.append(getattr(self, arg))
+                parts = arg.split('.')
+                mid = self
+                for part in parts:
+                    mid = getattr(mid, part)
+                args.append(mid)
         return template.format(*args)
 
     def get_default_image(self):
@@ -325,26 +349,33 @@ class Notification(models.Model):
 
 
 class NotificationSettingManager(models.Manager):
-    def check_user_settings(self, user, notification_type):
-        if self.get_queryset().filter(user=user, notification_type=notification_type, receive=True).exists():
+    def check_user_settings(self, user, notification_type, publication=None):
+        if self.get_queryset().filter(user=user, notification_type=notification_type, publication=publication,
+                                      receive=True).exists():
             return True
         else:
-            print "failed"
             return False
 
 
 class NotificationSetting(models.Model):  # TODO: create notification settings when user signs up
     """
-    Saves settings for a user irrespective of publication contribution,
+    Saves settings for a user with respect to a publication contribution,
     whether to receive a type of notification or not.
     """
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    publication = models.ForeignKey('publication.Publication', null=True, blank=True)
     notification_type = models.CharField(max_length=3, choices=Notification.CHOICE)
     receive = models.BooleanField(default=True)
     update_time = models.DateTimeField(auto_now=True)
 
     objects = NotificationSettingManager()
+
+    class Meta:
+        unique_together = ('user', 'notification_type', 'publication')
+
+    def __unicode__(self):
+        return self.user.username
 
 
 class Tag(models.Model):

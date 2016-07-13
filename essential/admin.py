@@ -4,8 +4,8 @@ from essential.models import Notification, Tag, Permission, Group, RequestLog, N
 
 
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'acted_on', 'notification_type', 'data', 'notified',
-                    'add_on_actor_count', 'update_time', 'create_time')
+    list_display = ('user', 'acted_on', 'notification_type', 'context', 'data', 'notified',
+                    'add_on_actor_count', 'verbose', 'update_time', 'create_time')
 
 
 admin.site.register(Notification, NotificationAdmin)
