@@ -3,7 +3,7 @@ from rest_framework import serializers
 from publication.models import Publication
 
 
-class PublicationSerializer(serializers.ModelSerializer):  # TODO: restrict fields
+class PublicationSerializer(serializers.ModelSerializer):
     """ Used for getting publication details - __all__ """
 
     class Meta:

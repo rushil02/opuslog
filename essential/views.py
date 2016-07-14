@@ -20,7 +20,7 @@ class NotificationView(APIView):
 
 
 class AllNotificationView(APIView):
-    query = Notification.objects.get_all_notification
+    query = Notification.objects.get_notification
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request):

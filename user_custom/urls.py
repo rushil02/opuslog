@@ -10,7 +10,7 @@ from user_custom.views.views import MainView, CustomLoginView, CreateUserWriteUp
 urlpatterns = [
     url(r'^user_details/(?P<user_handler>[^/]+)/$', user_page, name='user_details'),
 
-    url(r'^$', MainView.as_view()),  # TODO: name?
+    url(r'^$', MainView.as_view(), name='main_view'),  # TODO: name?
     url(r'^login/$', CustomLoginView.as_view(), name='custom_login'),
     url(r'^create_write_up/$', CreateUserWriteUpView.as_view(), name='create_write_up'),
     url(r'^edit_article/(?P<write_up_uuid>[^/]+)/$', edit_article_view, name='edit_independent_article'),

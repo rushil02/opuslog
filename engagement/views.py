@@ -35,7 +35,7 @@ class CommentFirstLevelView(AbstractMixin, ListAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save(write_up=self.write_up, actor=self.get_actor(), reply_to=self.reply_to)
-        self.notify_single(user=self.write_up.get_owner(), notification_type='CO', acted_on=self.write_up)
+        self.notify_single(user=self.write_up.get_owner().contributor, notification_type='CO', acted_on=self.write_up)
         if self.reply_to:
             self.notify_single(notify_self_pub=False, user=self.reply_to.actor, notification_type='CR',
                                acted_on=self.write_up, )
@@ -129,7 +129,7 @@ class VoteWriteupView(AbstractMixin, GenericAPIView):
                 notification_type = 'UW'
             else:
                 notification_type = 'DW'
-            self.notify_single(user=self.write_up.get_owner(), notification_type=notification_type,
+            self.notify_single(user=self.write_up.get_owner().contributor, notification_type=notification_type,
                                acted_on=self.write_up, )
         self.log(request, obj, args, kwargs, 'vote_write_up', 'engagement.views.VoteWriteupView.post')
         return Response(status=status.HTTP_200_OK)

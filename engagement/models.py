@@ -43,7 +43,7 @@ class VoteWriteUp(Engagement):
 
     vote_type = models.NullBooleanField(default=True)
     write_up = models.ForeignKey('write_up.WriteUp', on_delete=models.CASCADE)
-    validation = models.NullBooleanField(null=True, default=None)  # TODO: discuss feasibility
+    validation = models.NullBooleanField(null=True, default=None)
 
     class Meta:
         unique_together = ("content_type", "object_id", "write_up")

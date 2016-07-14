@@ -16,17 +16,13 @@ class NotificationManager(models.Manager):
     def get_queryset(self):
         return super(NotificationManager, self).get_queryset()
 
-    def get_notification(self, user):  # FIXME: Merge these 2 query without iter tools, Tiwari batayega
-        """
-        returns all 'not notified' and only 5 'latest already notified'
-        notifications are fetched from db
-        """
+    def get_unread_notification(self, user):
+        return self.get_queryset().filter(user=user, notified=False)
 
-        old = self.get_queryset().filter(user=user, notified=True)[:5]
-        new = self.get_queryset().filter(user=user, notified=False)
-        return new
+    def get_read_notification(self, user):
+        return self.get_queryset().filter(user=user, notified=True)
 
-    def get_all_notification(self, user):
+    def get_notification(self, user):
         """
         returns all the notifications
         which are ordered by timestamp (descending)
@@ -188,7 +184,7 @@ class Notification(models.Model):
         ('NM', 'New Message'),
         ('RL', 'Requests'),  # TODO: append notification id in frontend to its url
     )
-    # regiokn display-details
+    # region display-details
     display_details = {
         # region Comment
         'CO': {'single':

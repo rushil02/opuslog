@@ -2,6 +2,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.db.utils import IntegrityError
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import GenericAPIView, ListAPIView
+
 from rest_framework.response import Response
 
 from custom_package.mixins import AbstractMixin
@@ -15,7 +16,7 @@ class Mixin(AbstractMixin):
         raise NotImplementedError("Override in subclass")
 
 
-class ThreadView(Mixin, ListAPIView):  # TODO: create maintenance task to remove Threads with no user/publication
+class ThreadView(Mixin, ListAPIView):
     """
     Return list of threads of a user, creates a new entry and updates a given
     thread's subject.
