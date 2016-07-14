@@ -3,7 +3,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from admin_custom.fields import UserPublicationSerializedField
+from custom_package.fields import UserPublicationSerializedField
 from engagement.models import Comment
 from publication.models import Publication
 from publication.serializers import PublicationSerializerTwo

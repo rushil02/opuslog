@@ -4,22 +4,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
 
+from custom_package.mixins import AbstractMixin
 from essential.models import Notification, RequestLog
 from essential.serializers import NotificationSerializer, RequestLogSerializer
-
-
-class Mixin(object):
-    def get_actor(self):
-        raise NotImplementedError("Override in subclass")
-
-    def get_thread_query(self, thread_id):
-        raise NotImplementedError("Override in subclass")
-
-    def get_actor_for_activity(self):
-        raise NotImplementedError("Override in subclass")
-
-    def get_actor_handler(self):
-        return NotImplementedError("Override in Subclass")
 
 
 class NotificationView(APIView):
@@ -42,7 +29,7 @@ class AllNotificationView(APIView):
         return Response(serializer.data)
 
 
-class AcceptDenyRequest(Mixin, GenericAPIView):
+class AcceptDenyRequest(AbstractMixin, GenericAPIView):
     """Request accept and deny [Generic]"""
 
     serializer_class = RequestLogSerializer
@@ -64,7 +51,8 @@ class AcceptDenyRequest(Mixin, GenericAPIView):
                 cur_attr = getattr(cur_attr, attr)
             method_kwargs = notification_obj.data.get('method_kwargs', {})
         except Exception as e:
-            pass  # TODO: Activity log
+            self.log(request, notification_obj, args, kwargs, 'accept_deny_request',
+                     'essential.views.AcceptDenyRequest.post', level='E', error_message=e.message)
         else:
             redirect_url = cur_attr(answer=serializer.validated_data['answer'],
                                     notification=notification_obj,
@@ -73,4 +61,6 @@ class AcceptDenyRequest(Mixin, GenericAPIView):
 
             req_obj.status = serializer.validated_data['answer']
             req_obj.save()
+            self.log(request, notification_obj, args, kwargs, 'accept_deny_request',
+                     'essential.views.AcceptDenyRequest.post')
             return Response({'redirect_url': redirect_url})

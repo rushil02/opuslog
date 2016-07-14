@@ -2,31 +2,16 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.response import Response
 
+from custom_package.mixins import AbstractMixin
 from engagement.models import Comment, VoteWriteUp, Subscriber, VoteComment
 from engagement.serializers import CommentSerializer, VoteSerializer, SubscriberSerializer
-from essential.tasks import notify_async
 from write_up.models import WriteUp
 
 
-class Mixin(object):
-    def get_actor(self):
-        raise NotImplementedError("Override in subclass")
-
-    def get_actor_for_activity(self):
-        raise NotImplementedError("Override in subclass")
-
-    def get_actor_handler(self):
-        raise NotImplementedError("Override in subclass")
-
-    def get_redirect_url(self):
-        raise NotImplementedError("Override in subclass")
-
-
-class CommentFirstLevelView(Mixin, ListAPIView):
+class CommentFirstLevelView(AbstractMixin, ListAPIView):
     """ get or create first level comments """
 
     serializer_class = CommentSerializer
@@ -50,16 +35,12 @@ class CommentFirstLevelView(Mixin, ListAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save(write_up=self.write_up, actor=self.get_actor(), reply_to=self.reply_to)
-        owner = self.write_up.get_owner()
-        notify_async.delay(
-            user_object_id=owner.object_id,
-            user_content_type=owner.content_type.id,
-            notification_type='CO',
-            write_up_id=self.write_up.id,
-            redirect_url=self.get_redirect_url(),
-            actor_handler=self.get_actor_handler()
-        )
+        self.notify_single(user=self.write_up.get_owner(), notification_type='CO', acted_on=self.write_up)
+        if self.reply_to:
+            self.notify_single(notify_self_pub=False, user=self.reply_to.actor, notification_type='CR',
+                               acted_on=self.write_up, )
         obj.process_comment_async(actor_handler=self.get_actor_handler())
+        self.log(request, obj, args, kwargs, 'comment', 'engagement.views.CommentFirstLevelView/CommentNestedView.post')
         return Response(serializer.data)
 
     def validate(self):
@@ -83,22 +64,40 @@ class CommentNestedView(CommentFirstLevelView):
             raise SuspiciousOperation("No object found.")
 
 
-class DeleteCommentView(CommentNestedView):
+class DeleteCommentView(AbstractMixin, GenericAPIView):
     """ delete any level comment """
 
-    def post(self, request, *args, **kwargs):
-        raise PermissionDenied("Method is disabled")
+    serializer_class = CommentSerializer
+
+    write_up = None
+    comment = None
+
+    def get_comment(self):
+        raise NotImplementedError("Implement in Subclass")
+
+    def get_object(self):
+        write_up_uuid = self.kwargs.get('write_up_uuid', None)
+        if write_up_uuid:
+            return get_object_or_404(WriteUp, uuid=write_up_uuid)
+        else:
+            raise SuspiciousOperation("No object found")
+
+    def validate(self):
+        self.write_up = self.get_object()
+        self.comment = self.get_comment()
+        if not self.write_up.comment_set.filter(pk=self.comment.pk).exists():
+            raise SuspiciousOperation("No object found.")
 
     def delete(self, request, *args, **kwargs):
         self.validate()
-        comment = self.reply_to
-        comment.delete_flag = True
-        comment.save()
-        serializer = self.get_serializer(comment)
+        self.comment.delete_flag = True
+        self.comment.save()
+        serializer = self.get_serializer(self.comment)
+        self.log(request, self.comment, args, kwargs, 'delete_comment', 'engagement.views.DeleteCommentView.delete')
         return Response(serializer.data)
 
 
-class VoteWriteupView(Mixin, GenericAPIView):
+class VoteWriteupView(AbstractMixin, GenericAPIView):
     serializer_class = VoteSerializer
     write_up = None
 
@@ -115,22 +114,24 @@ class VoteWriteupView(Mixin, GenericAPIView):
         serializer.is_valid(raise_exception=True)
         vote_type = serializer.validated_data.get('vote_type', None)
 
-        obj, created = VoteWriteUp.objects.update_or_create(
+        obj, created = VoteWriteUp.objects.get_or_create(
             content_type=ContentType.objects.get_for_model(self.get_actor()),
-            object_id=self.get_actor().id, write_up=self.write_up,
-            defaults={'vote_type': vote_type}
-        )
+            object_id=self.get_actor().id, write_up=self.write_up)
 
-        owner = self.write_up.get_owner()
-        if created:
-            notify_async.delay(
-                user_object_id=owner.object_id,
-                user_content_type=owner.content_type.id,
-                notification_type='CO',
-                write_up_id=self.write_up.id,
-                redirect_url="bcbc",
-                actor_handler=self.get_actor_handler()
-            )
+        changed = False
+        if obj.vote_type != vote_type:
+            changed = True
+            obj.vote_type = vote_type
+            obj.save()
+
+        if changed or created:
+            if vote_type:
+                notification_type = 'UW'
+            else:
+                notification_type = 'DW'
+            self.notify_single(user=self.write_up.get_owner(), notification_type=notification_type,
+                               acted_on=self.write_up, )
+        self.log(request, obj, args, kwargs, 'vote_write_up', 'engagement.views.VoteWriteupView.post')
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, *args, **kwargs):
@@ -143,15 +144,14 @@ class VoteWriteupView(Mixin, GenericAPIView):
             )
         except VoteWriteUp.DoesNotExist:
             return Response(status=status.HTTP_200_OK)
-        except Exception as e:
-            pass  # TODO: activitylog
         else:
             obj.vote_type = None
             obj.save()
+            self.log(request, obj, args, kwargs, 'remove_vote_write_up', 'engagement.views.VoteWriteupView.delete')
             return Response(status=status.HTTP_200_OK)
 
 
-class SubscriberView(Mixin, GenericAPIView):
+class SubscriberView(AbstractMixin, GenericAPIView):
     serializer_class = SubscriberSerializer
 
     def post(self, request, *args, **kwargs):
@@ -165,14 +165,10 @@ class SubscriberView(Mixin, GenericAPIView):
             object_id_2=subscribed.id, defaults={'unsubscribe_flag': True}
         )
 
-        # if created:  # TODO: create notification
-        #     notify_async.delay(
-        #         user_object_id=owner.object_id,
-        #         user_content_type=owner.content_type.id,
-        #         notification_type='CO',
-        #         redirect_url="bcbc",
-        #         actor_handler=self.get_actor_handler()
-        #     )
+        if created:
+            self.notify_single(user=obj.subscribed, notification_type='SU', acted_on=obj.subscribed,
+                               suffix=obj.content_type_2.model)
+        self.log(request, obj, args, kwargs, 'subscribe', 'engagement.views.SubscriberView.post')
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, *args, **kwargs):
@@ -186,18 +182,13 @@ class SubscriberView(Mixin, GenericAPIView):
             object_id_2=subscribed.id, defaults={'unsubscribe_flag': False}
         )
 
-        # if created:
-        #     notify_async.delay(
-        #         user_object_id=owner.object_id,
-        #         user_content_type=owner.content_type.id,
-        #         notification_type='CO',
-        #         redirect_url="bcbc",
-        #         actor_handler=self.get_actor_handler()
-        #     )
+        self.notify_single(user=obj.subscribed, notification_type='US', acted_on=obj.subscribed,
+                           suffix=obj.content_type_2.model)
+        self.log(request, obj, args, kwargs, 'unsubscribe', 'engagement.views.SubscriberView.delete')
         return Response(status=status.HTTP_200_OK)
 
 
-class VoteCommentView(Mixin, GenericAPIView):
+class VoteCommentView(AbstractMixin, GenericAPIView):
     serializer_class = VoteSerializer
     comment = None
 
@@ -214,22 +205,25 @@ class VoteCommentView(Mixin, GenericAPIView):
         serializer.is_valid(raise_exception=True)
         vote_type = serializer.validated_data.get('vote_type', None)
 
-        obj, created = VoteComment.objects.update_or_create(
+        obj, created = VoteComment.objects.get_or_create(
             content_type=ContentType.objects.get_for_model(self.get_actor()),
             object_id=self.get_actor().id, comment=self.comment,
-            defaults={'vote_type': vote_type}
         )
 
-        # owner = self.write_up.get_owner()
-        # if created:
-        #     notify_async.delay(
-        #         user_object_id=owner.object_id,
-        #         user_content_type=owner.content_type.id,
-        #         notification_type='CO',
-        #         write_up_id=self.write_up.id,
-        #         redirect_url="bcbc",
-        #         actor_handler=self.get_actor_handler()
-        #     )
+        changed = False
+        if obj.vote_type != vote_type:
+            changed = True
+            obj.vote_type = vote_type
+            obj.save()
+
+        if changed or created:
+            if vote_type:
+                notification_type = 'UC'
+            else:
+                notification_type = 'DC'
+            self.notify_single(user=self.comment.actor, notification_type=notification_type, acted_on=self.comment,
+                               write_up=self.comment.write_up)
+        self.log(request, obj, args, kwargs, 'vote_comment', 'engagement.views.VoteCommentView.post')
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, *args, **kwargs):
@@ -242,9 +236,8 @@ class VoteCommentView(Mixin, GenericAPIView):
             )
         except VoteComment.DoesNotExist:
             return Response(status=status.HTTP_200_OK)
-        except Exception as e:
-            pass  # TODO: activitylog
         else:
             obj.vote_type = None
             obj.save()
+            self.log(request, obj, args, kwargs, 'remove_vote_comment', 'engagement.views.VoteCommentView.delete')
             return Response(status=status.HTTP_200_OK)

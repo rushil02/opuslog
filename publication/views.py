@@ -1,8 +1,11 @@
 from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponse
+
 from django.shortcuts import get_object_or_404
 
 from custom_package.mixins import PublicationMixin
+from engagement.models import Comment
+from essential.views import AcceptDenyRequest
 from publication.permissions import PublicationContributorPermissionMixin
 from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
     SubscriberView, VoteCommentView
@@ -68,7 +71,13 @@ class PublicationCommentNested(PublicationContributorPermissionMixin, Publicatio
 
 class PublicationCommentDelete(PublicationContributorPermissionMixin, PublicationMixin, DeleteCommentView):
     """ Implements PublicationView for deleting any comment. """
-    pass
+
+    def get_comment(self):
+        comment_id = self.kwargs.get('comment_id', None)
+        if comment_id:
+            return get_object_or_404(Comment, id=comment_id, publication=self.get_actor())
+        else:
+            raise SuspiciousOperation("No object found")
 
 
 class PublicationVoteWriteup(PublicationContributorPermissionMixin, PublicationMixin, VoteWriteupView):
@@ -83,4 +92,9 @@ class PublicationSubscriber(PublicationContributorPermissionMixin, PublicationMi
 
 class PublicationVoteComment(PublicationContributorPermissionMixin, PublicationMixin, VoteCommentView):
     """ Implements PublicationView for up/down voting a comment, or deleting so """
+    pass
+
+
+class PublicationRequest(PublicationContributorPermissionMixin, PublicationMixin, AcceptDenyRequest):
+    """"""
     pass

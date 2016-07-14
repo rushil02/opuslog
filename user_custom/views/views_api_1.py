@@ -1,7 +1,10 @@
+from django.core.exceptions import SuspiciousOperation
+
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 
 from custom_package.mixins import UserMixin
+from engagement.models import Comment
 from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
     SubscriberView, VoteCommentView
 from essential.views import AcceptDenyRequest
@@ -51,7 +54,13 @@ class UserCommentNested(UserMixin, CommentNestedView):
 
 class UserCommentDelete(UserMixin, DeleteCommentView):
     """ Implements UserView for deleting any comment. """
-    pass
+
+    def get_comment(self):
+        comment_id = self.kwargs.get('comment_id', None)
+        if comment_id:
+            return get_object_or_404(Comment, id=comment_id, user=self.get_actor())
+        else:
+            raise SuspiciousOperation("No object found")
 
 
 class UserVoteWriteup(UserMixin, VoteWriteupView):

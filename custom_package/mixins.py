@@ -50,7 +50,7 @@ class PublicationGetActorMixin(AbstractGetActorMixin):
 
 
 # region Activity Log Mixin
-class AbstractCreteLogMixin(object):
+class AbstractCreateLogMixin(object):
     def log(self, request, obj, m_args, m_kwargs, act_type, view, **kwargs):
         raise NotImplementedError("Override in subclass")
 
@@ -58,7 +58,8 @@ class AbstractCreteLogMixin(object):
         raise NotImplementedError("Override in subclass")
 
 
-class CreteLogMixin(object):
+class CreateLogMixin(object):
+    """ log method will not work without GetActor Mixin """
     def log(self, request, obj, m_args, m_kwargs, act_type, view, **kwargs):
         ActivityLog.objects.create_log(
             request, actor=self.get_actor_for_activity(), entity=obj, view=view,
@@ -146,15 +147,15 @@ class PublicationNotificationMixin(NotificationMixin):
 
 
 # region Set Mixin
-class AbstractMixin(AbstractGetActorMixin, AbstractCreteLogMixin, AbstractNotificationMixin):
+class AbstractMixin(AbstractGetActorMixin, AbstractCreateLogMixin, AbstractNotificationMixin):
     pass
 
 
-class UserMixin(UserGetActorMixin, CreteLogMixin, UserNotificationMixin):
+class UserMixin(UserGetActorMixin, CreateLogMixin, UserNotificationMixin):
     pass
 
 
-class PublicationMixin(PublicationGetActorMixin, CreteLogMixin, PublicationNotificationMixin):
+class PublicationMixin(PublicationGetActorMixin, CreateLogMixin, PublicationNotificationMixin):
     pass
 
 # endregion

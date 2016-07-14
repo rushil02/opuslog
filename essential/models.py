@@ -105,11 +105,19 @@ class NotificationManager(models.Manager):
                                                    notified=False)
         except Notification.DoesNotExist:
             if template_key == 'many':
-                template_key = 'single'
+                template_key = self.add_suffix('single', kwargs.get('suffix', None))
+
             self.create_new_notification(user, notification_type, template_key, acted_on, **kwargs)
         else:
             notification.add_on_actor_count += 1
+            template_key = self.add_suffix(template_key, kwargs.get('suffix', None))
             notification.save(template_key=template_key, verbose=kwargs.get('verbose', None))
+
+    @staticmethod
+    def add_suffix(template_key, suffix=None):
+        if suffix:
+            template_key = template_key + '_' + suffix
+        return template_key
 
 
 class Notification(models.Model):
@@ -151,6 +159,9 @@ class Notification(models.Model):
         }
 
     'internal_publication' = True marks that the notification object
+
+    A 'suffix' can be sent while using template_key => 'many', to distinguish
+    between multiple singular-plural verbose in same type of notification.
     """
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -177,8 +188,9 @@ class Notification(models.Model):
         ('NM', 'New Message'),
         ('RL', 'Requests'),  # TODO: append notification id in frontend to its url
     )
-    # region display-details
+    # regiokn display-details
     display_details = {
+        # region Comment
         'CO': {'single':
                    {'template': '{} commented on your creation {}',
                     'args': [{'data': 'actor_handler'}, 'acted_on.title']},
@@ -202,48 +214,86 @@ class Notification(models.Model):
                     'args': [{'data': 'actor_handler'}, 'acted_on.title']},
                'image': "",
                },
+        # endregion
+
+        # region Vote Comment
         'UC': {'single':
                    {"template": '{} up voted your comment on {}',
-                    'args': [{'data': 'actor_handler'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, {'data': 'write_up'}]},
                'many': {'template': '{} and {} others up voted your comment on {}',
-                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', {'data': 'write_up'}]},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' up voted a comment on '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'write_up'}]},
                'image': "",
                },
         'DC': {'single':
                    {'template': '{} down voted your comment on {}',
-                    'args': [{'data': 'actor_handler'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, {'data': 'write_up'}]},
                'many': {'template': '{} and {} others down voted your comment on {}',
-                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', {'data': 'write_up'}]},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' down voted a comment on '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, {'data': 'write_up'}]},
                'image': "",
                },
-        'SU': {'single':
-                   {"template": '{} up voted your comment on {}',
-                    'args': [{'data': 'actor_handler'}, 'write_up']},
-               'many': {'template': '{} and {} others up voted your comment on {}',
-                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
+        # endregion
+
+        # region Subscribe
+        'SU': {'single_publication':
+                   {"template": '{} subscribed your publication {}',
+                    'args': [{'data': 'actor_handler'}, 'acted_on.handler']},
+               'many_publication': {'template': '{} and {} others subscribed your publication {}',
+                                    'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'acted_on.handler']},
+               'single_user':
+                   {"template": '{} subscribed you',
+                    'args': [{'data': 'actor_handler'}, ]},
+               'many_user': {'template': '{} and {} others subscribed you',
+                             'args': [{'data': 'actor_handler'}, 'add_on_actor_count']},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' subscribed '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, 'acted_on.get_handler']},
                'image': "",
                },
-        'US': {'single':
-                   {"template": '{} up voted your comment on {}',
-                    'args': [{'data': 'actor_handler'}, 'write_up']},
-               'many': {'template': '{} and {} others up voted your comment on {}',
-                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
+        'US': {'single_publication':
+                   {"template": '{} unsubscribed your publication {}',
+                    'args': [{'data': 'actor_handler'}, 'acted_on.handler']},
+               'many_publication': {'template': '{} and {} others unsubscribed your publication {}',
+                                    'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'acted_on.handler']},
+               'single_user':
+                   {"template": '{} unsubscribed you',
+                    'args': [{'data': 'actor_handler'}, ]},
+               'many_user': {'template': '{} and {} others unsubscribed you',
+                             'args': [{'data': 'actor_handler'}, 'add_on_actor_count']},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' up voted creation '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, 'acted_on.get_handler']},
                'image': "",
                },
+        # endregion
+
+        # region Vote Write up
         'UW': {'single':
                    {'template': '{} up voted your creation {}',
                     'args': [{'data': 'actor_handler'}, 'acted_on.title']},
-               'many': {'template': '{} and {} others up voted your comment on {}',
+               'many': {'template': '{} and {} others up voted your creation {}',
                         'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'acted_on.title']},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' up voted creation '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, 'acted_on.title']},
                'image': "",
                },
         'DW': {'single':
                    {'template': '{} down voted your creation {}',
-                    'args': [{'data': 'actor_handler'}, 'write_up']},
+                    'args': [{'data': 'actor_handler'}, 'acted_on.title']},
                'many': {'template': '{} and {} others down voted your creation {}',
-                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'write_up']},
+                        'args': [{'data': 'actor_handler'}, 'add_on_actor_count', 'acted_on.title']},
+               'internal_publication':
+                   {'template': "'{}' of Publication '{}' up voted creation '{}'",
+                    'args': [{'data': 'contributor'}, {'data': 'actor_handler'}, 'acted_on.title']},
                'image': "",
                },
+        # endregion
 
         # region messaging system
         'NT': {'internal_publication':
@@ -340,7 +390,10 @@ class Notification(models.Model):
                 mid = self
                 for part in parts:
                     mid = getattr(mid, part)
-                args.append(mid)
+                if callable(mid):
+                    args.append(mid())
+                else:
+                    args.append(mid)
         return template.format(*args)
 
     def get_default_image(self):
