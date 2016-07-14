@@ -79,3 +79,6 @@ class ActivityLog(models.Model):
     create_time = models.DateTimeField(auto_now_add=True)
 
     objects = ActivityLogManager()
+
+    # def __unicode__(self):
+    #     return self.actor
