@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from essential.models import Notification, Tag, Permission, Group, RequestLog, GroupContributor
+from essential.models import Notification, Tag, Permission, Group, RequestLog, GroupContributor, WriteUpContributor
 
 
 class NotificationAdmin(admin.ModelAdmin):
@@ -14,3 +14,4 @@ admin.site.register(Permission)
 admin.site.register(Group)
 admin.site.register(RequestLog)
 admin.site.register(GroupContributor)
+admin.site.register(WriteUpContributor)

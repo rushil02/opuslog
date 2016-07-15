@@ -76,6 +76,8 @@ def add_write_up_contributor(request, write_up_uuid):
     template_name = ""
     success_redirect_url = ""
 
+    group = None
+
     context = {
         "form": form
     }
@@ -96,7 +98,7 @@ def add_write_up_contributor(request, write_up_uuid):
                     raise SuspiciousOperation()
                 else:
                     # FIXME: send notification to contributor whether he likes to accept or not check if already exists
-                    write_up.add_contributor(contributor, permission_level, share_XP, share_money)
+                    write_up.add_contributor(contributor, permission_level, share_XP, share_money, group)
                     return redirect(success_redirect_url)
         else:
             return render(request, template_name, context)

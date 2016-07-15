@@ -1,7 +1,7 @@
-from django.core.exceptions import PermissionDenied
 from django.http.response import HttpResponseForbidden
 
 from admin_custom.models import ActivityLog
+from essential.models import GroupContributor, WriteUpContributor
 from publication.models import ContributorList
 
 
@@ -19,10 +19,6 @@ class PublicationContributorPermissionMixin(object):
         pub_handler = self.kwargs.get('pub_handler')
         permission_list = self.publication_permissions.get(str(request.method.lower()), [])
 
-        if not user.is_authenticated():
-            raise PermissionDenied
-
-        # if permission_list:
         try:
             self.publication_contributor = ContributorList.objects.get_contributor_for_publication_with_perm(
                 pub_handler, permission_list, user
@@ -40,19 +36,24 @@ class PublicationContributorPermissionMixin(object):
 
 class PublicationContributorGroupPermissionMixin(object):
     group_contributor = None
+    write_up_object_contributor = None
     group_permissions = {}
 
     def post_permission_check(self, request, *args, **kwargs):
         method_permission_list = self.group_permissions.get(request.method.lower(), [])
         if method_permission_list:
-            write_up = self.contributor.write_up
-            if self.contributor.is_owner:
-                group = write_up.group
-            else:
-                group = self.get_actor().group.get(contributed_group=True)
+            group = self.contributor.group
             try:
-                self.group_contributor = group.get_contributor_with_perm(method_permission_list,
-                                                                         self.get_actor_for_activity())
+                self.group_contributor = GroupContributor.objects.get_contributor_for_group_with_perm(group=group,
+                                                                                                      permission_list=method_permission_list,
+                                                                                                      contributor=self.get_actor_for_activity())
             except:
-                return HttpResponseForbidden()
+                write_up = self.contributor.write_up
+                try:
+                    self.write_up_object_contributor = WriteUpContributor.objects.get_contributor_for_write_up_with_perm(
+                        write_up=write_up,
+                        permission_list=method_permission_list,
+                        contributor=self.get_actor_for_activity())
+                except:
+                    return HttpResponseForbidden()
         return super(PublicationContributorGroupPermissionMixin, self).post_permission_check(request, *args, **kwargs)

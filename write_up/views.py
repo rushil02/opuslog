@@ -72,7 +72,8 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
         user = self.get_actor()
         self.object = form.save()
         write_up = self.object
-        owner = write_up.set_owner(user)
+        group = form.cleaned_data['group']
+        owner = write_up.set_owner(user, group)
         write_up.create_write_up_profile(user=self.request.user)
         write_up.create_write_up_handler(contributor=owner)
         return HttpResponseRedirect(self.get_success_url())
@@ -251,7 +252,7 @@ class ContributorRequest(UserPublicationMixin, WriteupPermissionMixin, CreateAPI
         permission_list = serializer.validated_data.get('permissions')
         share_XP = serializer.validated_data.get('share_XP')
         share_money = serializer.validated_data.get('share_money')
-        # TODO: create notification and request for adding contributor
+        # TODO: create notification and request for adding contributor and ask for group in request
         message = 'The contributor has been sent a request. Wait for his response.'
         serializer.data[0].update({'message': message})
         return Response(serializer.data)

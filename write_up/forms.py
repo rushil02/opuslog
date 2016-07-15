@@ -17,7 +17,7 @@ class CreateWriteUpForm(forms.ModelForm):
 
     class Meta:
         model = WriteUp
-        fields = ['title', 'description', 'cover', 'collection_type', 'group']
+        fields = ['title', 'description', 'cover', 'collection_type']
 
 
 class EditWriteUpForm(forms.ModelForm):
