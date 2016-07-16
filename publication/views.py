@@ -3,6 +3,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404
 
+from essential.models import WriteUpContributor, Permission
 from publication.permissions import PublicationContributorPermissionMixin, PublicationContributorGroupPermissionMixin
 from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCommentView, VoteWriteupView, \
     SubscriberView, VoteCommentView
@@ -26,7 +27,7 @@ class GetActor(object):
         return "/pub/" + self.get_actor_handler()
 
     def get_actor_for_activity(self):
-        return self.get_actor().contributorlist_set.get(contributor=self.get_user())
+        return self.publication_contributor
 
     def get_user(self):
         return self.request.user
@@ -120,6 +121,10 @@ class PublicationCreateWriteUpView(GetActor, PublicationContributorPermissionMix
     def get_groups(self):
         return self.get_actor().group.get_groups_for_publication_user_to_create(self.get_actor_for_activity())
 
+    def set_object_level_permission_for_publication_user(self):
+        WriteUpContributor.objects.create_object_with_permissions(self.object, self.publication_contributor,
+                                                                  permission_list=['can_edit'])
+
 
 publication_create_write_up_view = login_required()(PublicationCreateWriteUpView.as_view())
 
@@ -128,6 +133,16 @@ class PublicationEditWriteUpView(GetActor, PublicationContributorPermissionMixin
                                  PublicationContributorGroupPermissionMixin, EditWriteUpView):
     write_up_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     group_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
+
+    def user_has_perm(self):
+        permission_obj = Permission.objects.get(code_name='can_change_write_up_group')
+        if permission_obj in self.publication_contributor.permissions.all():
+            return True
+        else:
+            return False
+
+    def post_group_change(self, new_group):
+        WriteUpContributor.objects.delete_contributors_not_in_group(self.object, new_group)
 
 
 publication_edit_write_up_view = login_required()(PublicationEditWriteUpView.as_view())

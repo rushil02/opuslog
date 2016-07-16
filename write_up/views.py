@@ -50,17 +50,11 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
     template_name = "write_up/form_template.html"
     groups = None
 
-    def get(self, request, *args, **kwargs):
+    def dispatch(self, request, *args, **kwargs):
         self.groups = self.get_groups()
         if not self.groups:
             return HttpResponseForbidden()
-        return super(CreateWriteUpView, self).get(request, *args, **kwargs)
-
-    def post(self, request, *args, **kwargs):
-        self.groups = self.get_groups()
-        if not self.groups:
-            return HttpResponseForbidden()
-        return super(CreateWriteUpView, self).post(request, *args, **kwargs)
+        return super(CreateWriteUpView, self).dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
         write_up = self.object
@@ -74,9 +68,13 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
         write_up = self.object
         group = form.cleaned_data['group']
         owner = write_up.set_owner(user, group)
+        self.set_object_level_permission_for_publication_user()
         write_up.create_write_up_profile(user=self.request.user)
         write_up.create_write_up_handler(contributor=owner)
         return HttpResponseRedirect(self.get_success_url())
+
+    def set_object_level_permission_for_publication_user(self):
+        pass
 
     def get_form_kwargs(self):
         kwargs = super(CreateWriteUpView, self).get_form_kwargs()
@@ -88,7 +86,6 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
 
 
 class EditWriteUpView(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, BaseUpdateView):
-    # FIXME: change group in this form but who should be able to change i.e define its permission
     form_class = EditWriteUpForm
     model = WriteUp
     template_name = "write_up/form_template.html"
@@ -100,6 +97,31 @@ class EditWriteUpView(UserPublicationMixin, WriteupPermissionMixin, TemplateResp
         write_up = self.object
         user_type_prefix = self.get_success_url_prefix()
         return user_type_prefix + "/edit_write_up/" + str(write_up.uuid)
+
+    def get_form_kwargs(self):
+        kwargs = super(EditWriteUpView, self).get_form_kwargs()
+        if self.user_has_perm():
+            groups = self.get_actor().group.all()
+            initial_group = self.contributor.group
+            kwargs.update({
+                'groups': groups,
+                'initial_group': initial_group
+            })
+        return kwargs
+
+    def form_valid(self, form):
+        if 'group' in form.changed_data:
+            new_group = form.cleaned_data['group']
+            self.contributor.group = new_group
+            self.contributor.save()
+            self.post_group_change(new_group)
+        return super(EditWriteUpView, self).form_valid(form)
+
+    def user_has_perm(self):
+        return True
+
+    def post_group_change(self, new_group):
+        pass
 
 
 class EditBaseDesign(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, BaseUpdateView):

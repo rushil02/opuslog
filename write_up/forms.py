@@ -21,6 +21,13 @@ class CreateWriteUpForm(forms.ModelForm):
 
 
 class EditWriteUpForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        groups = kwargs.pop('groups', None)
+        initial_group = kwargs.pop('initial_group')
+        super(EditWriteUpForm, self).__init__(*args, **kwargs)
+        if groups:
+            self.fields['group'] = forms.ModelChoiceField(queryset=groups, initial=initial_group)
+
     class Meta:
         model = WriteUp
         fields = ['title', 'description', 'cover']

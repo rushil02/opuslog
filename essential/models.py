@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import models
 from django.conf import settings
+from django.db.models.query_utils import Q
 
 from admin_custom.models import ActivityLog
 
@@ -315,6 +316,13 @@ class Group(models.Model):
     class Meta:
         unique_together = ('content_type', 'object_id', 'name')
 
+    class CustomMeta:
+        permission_list = [
+            {'name': 'Can Change write Up Group', 'code_name': 'can_change_write_up_group',
+             'help_text': 'Allow contributor to change a write up group',
+             'for': 'P'},
+        ]
+
     def __unicode__(self):
         return self.name
 
@@ -371,6 +379,16 @@ class WriteUpGroupContributorManager(models.Manager):
 
     def get_contributor_for_write_up_with_perm(self, write_up, permission_list, contributor):
         return self.get_queryset().permission(permission_list).for_write_up_contributor(write_up, contributor)
+
+    def create_object_with_permissions(self, write_up, contributor, permission_list):
+        permissions = Permission.objects.filter(code_name__in=permission_list)
+        obj = self.get_queryset().create(write_up=write_up, contributor=contributor)
+        obj.permissions.add(*permissions)
+        return obj
+
+    def delete_contributors_not_in_group(self, write_up, new_group):
+        return self.get_queryset().filter(~Q(contributor__groupcontributor__group=new_group),
+                                          write_up=write_up).delete()
 
 
 class WriteUpContributor(models.Model):
