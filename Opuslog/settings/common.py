@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     'djcelery',
     'captcha',
 
+    'cities_light_custom',
+
     'user_custom',
     'publication',
     'write_up',
@@ -222,6 +224,7 @@ SITE_ID = 1
 
 
 # Cities-light settings
+CITIES_LIGHT_APP_NAME = 'cities_light_custom'
 CITIES_LIGHT_TRANSLATION_LANGUAGES = ['en', ]
 
 

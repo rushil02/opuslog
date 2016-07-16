@@ -1,10 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title></title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% block body %}
 <form class="login" method="POST" action="{% url 'user_custom:custom_login' %}">
     {% csrf_token %}
     {{ login_form.as_p }}
@@ -18,5 +13,4 @@
     {{ signup_form.as_p }}
     <button type="submit">Sign Up &raquo;</button>
 </form>
-</body>
-</html>
+{% endblock body %}

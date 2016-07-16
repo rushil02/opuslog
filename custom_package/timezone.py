@@ -11,9 +11,13 @@ class TimezoneMiddleware(object):
             return
         else:
             if request.user.is_authenticated():
-                user_tz = request.user.userprofile.timezone
-                if user_tz:
-                    timezone.activate(pytz.timezone(user_tz))
-                    request.session['django_timezone'] = user_tz
-                    return
+                try:
+                    user_tz = request.user.userprofile.area_city.timezone
+                except Exception:
+                    pass
+                else:
+                    if user_tz:
+                        timezone.activate(pytz.timezone(user_tz))
+                        request.session['django_timezone'] = user_tz
+                        return
         timezone.deactivate()

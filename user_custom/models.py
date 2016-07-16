@@ -8,9 +8,9 @@ from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from cities_light.models import Region, Country, City
 from django.conf import settings
-import pytz
+
+from cities_light_custom.models import Region, Country, City
 
 
 def get_file_path(instance, filename):
@@ -22,8 +22,6 @@ def get_file_path(instance, filename):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL)
-    tz_choices = tuple([tuple([str(x), str(x)])for x in pytz.common_timezones])
-    timezone = models.CharField(max_length=100, null=True, blank=True, choices=tz_choices)
     dob = models.DateField(blank=True, null=True)
     GENDER = (
         ('M', 'Male'),
@@ -94,4 +92,3 @@ class User(AbstractUser):
 
     def get_handler_url(self):
         return reverse('user_custom:user_details', kwargs={'user_handler': self.username})
-
