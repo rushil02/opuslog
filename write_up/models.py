@@ -48,6 +48,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.conf import settings
 
+from essential.models import Permission
 from publication.models import Publication
 
 
@@ -102,30 +103,33 @@ class WriteUp(models.Model):
                                    object_id_field='request_for_object_id', related_query_name='write_up')
     flagged_entity = GenericRelation('moderator.FlaggedEntity', related_query_name='write_up')
 
-    group = models.ForeignKey('essential.Group')
-
     objects = WriteUpManager()
 
     class CustomMeta:
         permission_list = [
-            {'name': 'Can Edit article', 'code_name': 'can_edit',
+            {'name': 'Can Edit Write Up', 'code_name': 'can_edit',
              'help_text': 'Allow contributor to edit Write up',
              'for': 'W'},
+            {'name': 'Can Create Write Up', 'code_name': 'can_create_write_up',
+             'help_text': 'Allow contributor to create Write up',
+             'for': 'P'},
         ]
 
     def __unicode__(self):
         return self.title
 
-    def set_owner(self, owner):  # fixme: add all writeup permissions to owner
-        contributor = ContributorList.objects.create_contributor(owner, write_up=self, is_owner=True, share_XP=100,
-                                                                 share_money=100)
+    def set_owner(self, owner, group):  # fixme: add all writeup permissions to owner
+        contributor = ContributorList.objects.create_contributor(owner, write_up=self, group=group, is_owner=True,
+                                                                 share_XP=100, share_money=100)
+        write_up_permissions = Permission.objects.get_permissions_for_write_up()
+        contributor.permissions.add(*write_up_permissions)
         return contributor
 
     def create_write_up_profile(self, user):
         return WriteupProfile.objects.create(write_up=self, created_by=user)
 
-    def add_contributor(self, contributor, share_xp, share_money):
-        return ContributorList.objects.create_contributor(contributor, write_up=self, share_XP=share_xp,
+    def add_contributor(self, contributor, share_xp, share_money, group):
+        return ContributorList.objects.create_contributor(contributor, write_up=self, group=group, share_XP=share_xp,
                                                           share_money=share_money)
 
     def get_all_contributors(self):  # FIXME: exclude removed contributors
@@ -203,10 +207,10 @@ class ContributorListQuerySet(models.QuerySet):
 
     def for_write_up(self, write_up_uuid, collection_type=None):
         if collection_type:
-            return self.select_related('write_up').get(write_up__uuid=write_up_uuid,
-                                                       write_up__collection_type=collection_type)
+            return self.select_related('write_up', 'group').get(write_up__uuid=write_up_uuid,
+                                                                write_up__collection_type=collection_type)
         else:
-            return self.select_related('write_up').get(write_up__uuid=write_up_uuid)
+            return self.select_related('write_up', 'group').get(write_up__uuid=write_up_uuid)
 
 
 class ContributorListManager(models.Manager):
@@ -216,9 +220,9 @@ class ContributorListManager(models.Manager):
     def get_contributor_for_writeup_with_perm(self, write_up_uuid, permission_list, collection_type=None):
         return self.get_queryset().permission(permission_list).for_write_up(write_up_uuid, collection_type)
 
-    def create_contributor(self, contributor, write_up, is_owner=False, share_XP=None, share_money=None):
+    def create_contributor(self, contributor, write_up, group, is_owner=False, share_XP=None, share_money=None):
         return self.get_queryset().create(contributor=contributor, write_up=write_up, is_owner=is_owner,
-                                          share_XP=share_XP, share_money=share_money)
+                                          share_XP=share_XP, share_money=share_money, group=group)
 
     def get_owner_for_permission(self, write_up_uuid, collection_type=None):
         return self.get_queryset().owner().for_write_up(write_up_uuid, collection_type)
@@ -255,6 +259,7 @@ class ContributorList(models.Model):
     write_up = models.ForeignKey(WriteUp)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
+    group = models.ForeignKey('essential.Group')
 
     objects = ContributorListManager()
 

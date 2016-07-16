@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import models
 from django.conf import settings
+from django.db.models.query_utils import Q
 
 from admin_custom.models import ActivityLog
 
@@ -446,8 +447,12 @@ class Tag(models.Model):
 
 
 class GroupManager(models.Manager):
-    def get_other_groups(self):
-        return self.get_queryset().filter(contributed_group=False)
+    def get_user_groups(self):
+        return self.get_queryset().all()
+
+    def get_groups_for_publication_user_to_create(self, contributor):
+        return self.get_queryset().filter(groupcontributor__contributor=contributor,
+                                          groupcontributor__permissions__code_name='can_create_write_up')
 
 
 class Group(models.Model):
@@ -467,18 +472,21 @@ class Group(models.Model):
     object_id = models.PositiveIntegerField()
     entity = GenericForeignKey('content_type', 'object_id')
     name = models.CharField(max_length=100)
-    contributed_group = models.BooleanField(default=False)
 
     objects = GroupManager()
 
     class Meta:
         unique_together = ('content_type', 'object_id', 'name')
 
+    class CustomMeta:
+        permission_list = [
+            {'name': 'Can Change write Up Group', 'code_name': 'can_change_write_up_group',
+             'help_text': 'Allow contributor to change a write up group',
+             'for': 'P'},
+        ]
+
     def __unicode__(self):
         return self.name
-
-    def get_contributor_with_perm(self, perm_list, contributor):
-        return self.groupcontributor_set.get_contributor_for_group_with_perm(perm_list, contributor)
 
 
 class GroupContributorQuerySet(models.QuerySet):
@@ -488,16 +496,16 @@ class GroupContributorQuerySet(models.QuerySet):
             permission_qs = permission_qs.filter(permissions__code_name=permission)
         return permission_qs
 
-    def for_contributor(self, contributor):
-        return self.get(contributor=contributor)
+    def for_group_contributor(self, contributor, group):
+        return self.get(contributor=contributor, group=group)
 
 
 class GroupContributorManager(models.Manager):
     def get_queryset(self):
         return GroupContributorQuerySet(self.model, using=self._db)
 
-    def get_contributor_for_group_with_perm(self, permission_list, contributor):
-        return self.get_queryset().permission(permission_list).for_contributor(contributor)
+    def get_contributor_for_group_with_perm(self, group, permission_list, contributor):
+        return self.get_queryset().permission(permission_list).for_group_contributor(contributor, group)
 
 
 class GroupContributor(models.Model):
@@ -514,6 +522,43 @@ class GroupContributor(models.Model):
 
     class Meta:
         unique_together = ('group', 'contributor')
+
+
+class WriteUpContributorQuerySet(models.QuerySet):
+    def permission(self, permission_list):
+        permission_qs = self
+        for permission in permission_list:
+            permission_qs = permission_qs.filter(permissions__code_name=permission)
+        return permission_qs
+
+    def for_write_up_contributor(self, write_up, contributor):
+        return self.get(contributor=contributor, write_up=write_up)
+
+
+class WriteUpGroupContributorManager(models.Manager):
+    def get_queryset(self):
+        return WriteUpContributorQuerySet(self.model, using=self._db)
+
+    def get_contributor_for_write_up_with_perm(self, write_up, permission_list, contributor):
+        return self.get_queryset().permission(permission_list).for_write_up_contributor(write_up, contributor)
+
+    def create_object_with_permissions(self, write_up, contributor, permission_list):
+        permissions = Permission.objects.filter(code_name__in=permission_list)
+        obj = self.get_queryset().create(write_up=write_up, contributor=contributor)
+        obj.permissions.add(*permissions)
+        return obj
+
+    def delete_contributors_not_in_group(self, write_up, new_group):
+        return self.get_queryset().filter(~Q(contributor__groupcontributor__group=new_group),
+                                          write_up=write_up).delete()
+
+
+class WriteUpContributor(models.Model):
+    write_up = models.ForeignKey('write_up.WriteUp')
+    contributor = models.ForeignKey('publication.ContributorList')
+    permissions = models.ManyToManyField('essential.Permission')
+
+    objects = WriteUpGroupContributorManager()
 
 
 class PermissionManager(models.Manager):

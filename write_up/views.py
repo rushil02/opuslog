@@ -24,11 +24,11 @@ class UserPublicationMixin(object):
 
 class WriteupPermissionMixin(object):
     contributor = None
-    permissions = {}
+    write_up_permissions = {}
     collection_type = None
 
     def dispatch(self, request, *args, **kwargs):
-        method_permission_list = self.permissions.get(request.method.lower(), None)
+        method_permission_list = self.write_up_permissions.get(request.method.lower(), [])
         if method_permission_list:
             uuid = self.kwargs.get('write_up_uuid')
             try:
@@ -48,6 +48,13 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
     form_class = CreateWriteUpForm
     model = WriteUp
     template_name = "write_up/form_template.html"
+    groups = None
+
+    def dispatch(self, request, *args, **kwargs):
+        self.groups = self.get_groups()
+        if not self.groups:
+            return HttpResponseForbidden()
+        return super(CreateWriteUpView, self).dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
         write_up = self.object
@@ -59,15 +66,23 @@ class CreateWriteUpView(UserPublicationMixin, TemplateResponseMixin, BaseCreateV
         user = self.get_actor()
         self.object = form.save()
         write_up = self.object
-        owner = write_up.set_owner(user)
+        group = form.cleaned_data['group']
+        owner = write_up.set_owner(user, group)
+        self.set_object_level_permission_for_publication_user()
         write_up.create_write_up_profile(user=self.request.user)
         write_up.create_write_up_handler(contributor=owner)
         return HttpResponseRedirect(self.get_success_url())
 
+    def set_object_level_permission_for_publication_user(self):
+        pass
+
     def get_form_kwargs(self):
         kwargs = super(CreateWriteUpView, self).get_form_kwargs()
-        kwargs.update({'actor': self.get_actor()})
+        kwargs.update({'groups': self.groups})
         return kwargs
+
+    def get_groups(self):
+        raise NotImplementedError
 
 
 class EditWriteUpView(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, BaseUpdateView):
@@ -82,6 +97,31 @@ class EditWriteUpView(UserPublicationMixin, WriteupPermissionMixin, TemplateResp
         write_up = self.object
         user_type_prefix = self.get_success_url_prefix()
         return user_type_prefix + "/edit_write_up/" + str(write_up.uuid)
+
+    def get_form_kwargs(self):
+        kwargs = super(EditWriteUpView, self).get_form_kwargs()
+        if self.user_has_perm():
+            groups = self.get_actor().group.all()
+            initial_group = self.contributor.group
+            kwargs.update({
+                'groups': groups,
+                'initial_group': initial_group
+            })
+        return kwargs
+
+    def form_valid(self, form):
+        if 'group' in form.changed_data:
+            new_group = form.cleaned_data['group']
+            self.contributor.group = new_group
+            self.contributor.save()
+            self.post_group_change(new_group)
+        return super(EditWriteUpView, self).form_valid(form)
+
+    def user_has_perm(self):
+        return True
+
+    def post_group_change(self, new_group):
+        pass
 
 
 class EditBaseDesign(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, BaseUpdateView):
@@ -149,57 +189,6 @@ class EditBaseDesign(UserPublicationMixin, WriteupPermissionMixin, TemplateRespo
 
     def get_success_url_suffix_for_M(self):
         return "/edit_article/" + str(self.write_up.uuid) + '/' + self.kwargs['chapter_index']
-
-
-# class AddUnitView(UserPublicationMixin, TemplateResponseMixin, View, ContextMixin):
-#     template_name = "write_up/form_template.html"
-#     formset_class = CollectionUnitFormSet
-#     model = CollectionUnit
-#     write_up = None
-#     contributor = None
-# 
-#     def get_context_data(self, **kwargs):
-#         if 'formset' not in kwargs:
-#             kwargs['formset'] = self.get_formset()
-#         if self.write_up:
-#             kwargs['write_up'] = self.write_up
-#         return super(AddUnitView, self).get_context_data(**kwargs)
-# 
-#     def get_formset(self):
-#         return self.formset_class(**self.get_formset_kwargs())
-# 
-#     def get_formset_kwargs(self):
-#         kwargs = {}
-#         if self.request.method in ('POST', 'PUT'):
-#             kwargs.update({
-#                 'data': self.request.POST,
-#             })
-#         kwargs.update({'instance': self.write_up})
-#         return kwargs
-# 
-#     def get(self, request, *args, **kwargs):
-#         self.write_up = self.get_write_up()
-#         return self.render_to_response(self.get_context_data())
-# 
-#     def get_write_up(self):
-#         self.contributor = self.kwargs.get('contributor')
-#         return self.contributor.write_up
-# 
-#     def post(self, request, *args, **kwargs):
-#         self.write_up = self.get_write_up()
-#         formset = self.get_formset()
-#         if formset.is_valid():
-#             return self.formset_valid(formset)
-#         else:
-#             return self.formset_invalid(formset)
-# 
-#     def formset_valid(self, formset):
-#         for form in formset:
-#             collection_unit = form.save(commit=False)
-# 
-# 
-#     def formset_invalid(self, formset):
-#         pass
 
 
 class CollectionUnitView(UserPublicationMixin, WriteupPermissionMixin, TemplateResponseMixin, ModelFormMixin, View):
@@ -285,7 +274,7 @@ class ContributorRequest(UserPublicationMixin, WriteupPermissionMixin, CreateAPI
         permission_list = serializer.validated_data.get('permissions')
         share_XP = serializer.validated_data.get('share_XP')
         share_money = serializer.validated_data.get('share_money')
-        # TODO: create notification and request for adding contributor
+        # TODO: create notification and request for adding contributor and ask for group in request
         message = 'The contributor has been sent a request. Wait for his response.'
         serializer.data[0].update({'message': message})
         return Response(serializer.data)
