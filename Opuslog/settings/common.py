@@ -223,7 +223,6 @@ SITE_ID = 1
 
 # Cities-light settings
 CITIES_LIGHT_TRANSLATION_LANGUAGES = ['en', ]
-CITIES_LIGHT_INCLUDE_COUNTRIES = ['IN', ]
 
 
 # Email settings

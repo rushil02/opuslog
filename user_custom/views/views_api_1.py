@@ -1,7 +1,9 @@
 from django.core.exceptions import SuspiciousOperation
-
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework import status
 
 from custom_package.mixins import UserMixin
 from engagement.models import Comment
@@ -10,6 +12,7 @@ from engagement.views import CommentFirstLevelView, CommentNestedView, DeleteCom
 from essential.views import AcceptDenyRequest
 from messaging_system.models import Thread
 from messaging_system.views import ThreadView, AddDeleteMemberView, MessageView
+from user_custom.serializers import UserTimezoneSerializer
 
 
 class UserThreads(UserMixin, ThreadView):
@@ -81,3 +84,17 @@ class UserVoteComment(UserMixin, VoteCommentView):
 class UserRequest(UserMixin, AcceptDenyRequest):
     """"""
     pass
+
+
+@api_view(['POST'])
+@permission_classes((AllowAny,))
+def set_timezone(request):
+    serializer = UserTimezoneSerializer(data=request.data)
+    if serializer.is_valid():
+        if request.user.is_authenticated():
+            user_profile = request.user.userprofile
+            user_profile.timezone = serializer.validated_data['tz']
+            user_profile.save()
+        request.session['django_timezone'] = serializer.validated_data['tz']
+        return Response(status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_406_NOT_ACCEPTABLE)

@@ -201,14 +201,3 @@ class UserContributorRequest(UserViewMixin, ContributorRequest):
 
 
 user_contributor_request_view = login_required()(UserContributorRequest.as_view())
-
-import pytz
-from django.shortcuts import redirect, render
-
-
-def set_timezone(request):
-    if request.method == 'POST':
-        request.session['django_timezone'] = request.POST['timezone']
-        return redirect('/')
-    else:
-        return render(request, 'time.html', {'timezones': pytz.common_timezones})

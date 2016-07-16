@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+import pytz
 from rest_framework import serializers
 
 
@@ -24,3 +25,8 @@ class UserSerializerTwo(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = ('username', 'first_name', 'profile_image', 'url')
+
+
+class UserTimezoneSerializer(serializers.Serializer):
+    tz_choices = tuple([tuple([str(x), str(x)])for x in pytz.common_timezones])
+    tz = serializers.ChoiceField(choices=tz_choices)
