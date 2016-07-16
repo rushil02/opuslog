@@ -24,6 +24,9 @@ class AbstractGetActorMixin(object):
     def get_redirect_url(self):
         return None
 
+    def get_success_url_prefix(self):
+        return NotImplementedError("Override in subclass")
+
 
 class UserGetActorMixin(AbstractGetActorMixin):
     def get_actor(self):
@@ -31,6 +34,9 @@ class UserGetActorMixin(AbstractGetActorMixin):
 
     def get_actor_for_activity(self):
         return self.get_user()
+
+    def get_success_url_prefix(self):
+        return ""
 
 
 class PublicationGetActorMixin(AbstractGetActorMixin):
@@ -40,10 +46,16 @@ class PublicationGetActorMixin(AbstractGetActorMixin):
     """
 
     def get_actor(self):
-        return self.contributor.publication
+        return self.get_contributor().publication
 
     def get_actor_for_activity(self):
-        return self.get_actor().contributorlist_set.get(contributor=self.get_user())
+        return self.get_contributor()
+
+    def get_contributor(self):
+        return self.publication_contributor
+
+    def get_success_url_prefix(self):
+        return "/pub/" + self.get_actor_handler()
 
 
 # endregion

@@ -1,7 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import SuspiciousOperation
 from django.http.response import HttpResponse
-
 from django.shortcuts import get_object_or_404
 
 from custom_package.mixins import PublicationMixin
@@ -104,7 +103,7 @@ class PublicationRequest(PublicationContributorPermissionMixin, PublicationMixin
     pass
 
 
-class PublicationCreateWriteUpView(GetActor, PublicationContributorPermissionMixin, CreateWriteUpView):
+class PublicationCreateWriteUpView(PublicationContributorPermissionMixin, PublicationMixin, CreateWriteUpView):
     def get_groups(self):
         return self.get_actor().group.get_groups_for_publication_user_to_create(self.get_actor_for_activity())
 
@@ -116,8 +115,8 @@ class PublicationCreateWriteUpView(GetActor, PublicationContributorPermissionMix
 publication_create_write_up_view = login_required()(PublicationCreateWriteUpView.as_view())
 
 
-class PublicationEditWriteUpView(GetActor, PublicationContributorPermissionMixin,
-                                 PublicationContributorGroupPermissionMixin, EditWriteUpView):
+class PublicationEditWriteUpView(PublicationContributorPermissionMixin,
+                                 PublicationContributorGroupPermissionMixin, PublicationMixin, EditWriteUpView):
     write_up_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     group_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
 
@@ -135,8 +134,9 @@ class PublicationEditWriteUpView(GetActor, PublicationContributorPermissionMixin
 publication_edit_write_up_view = login_required()(PublicationEditWriteUpView.as_view())
 
 
-class PublicationEditIndependentArticleView(GetActor, PublicationContributorPermissionMixin,
-                                            PublicationContributorGroupPermissionMixin, EditBaseDesign):
+class PublicationEditIndependentArticleView(PublicationContributorPermissionMixin,
+                                            PublicationContributorGroupPermissionMixin, PublicationMixin,
+                                            EditBaseDesign):
     write_up_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     group_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     collection_type = 'I'
@@ -145,8 +145,8 @@ class PublicationEditIndependentArticleView(GetActor, PublicationContributorPerm
 publication_edit_article_view = login_required()(PublicationEditIndependentArticleView.as_view())
 
 
-class PublicationCollectionUnitView(GetActor, PublicationContributorPermissionMixin,
-                                    PublicationContributorGroupPermissionMixin, CollectionUnitView):
+class PublicationCollectionUnitView(PublicationContributorPermissionMixin,
+                                    PublicationContributorGroupPermissionMixin, PublicationMixin, CollectionUnitView):
     write_up_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     group_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     collection_type = 'M'
@@ -155,8 +155,8 @@ class PublicationCollectionUnitView(GetActor, PublicationContributorPermissionMi
 publication_collection_unit_view = login_required()(PublicationCollectionUnitView.as_view())
 
 
-class EditUserCollectionArticleView(GetActor, PublicationContributorPermissionMixin,
-                                    PublicationContributorGroupPermissionMixin, EditBaseDesign):
+class EditUserCollectionArticleView(PublicationContributorPermissionMixin,
+                                    PublicationContributorGroupPermissionMixin, PublicationMixin, EditBaseDesign):
     write_up_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     group_permissions = {'get': ['can_edit'], 'post': ['can_edit']}
     collection_type = 'M'
