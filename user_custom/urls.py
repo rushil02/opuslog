@@ -6,6 +6,7 @@ from user_custom.views.views_api_1 import (
 from user_custom.views.views import MainView, CustomLoginView, CreateUserWriteUpView, edit_article_view, \
     edit_write_up_view, \
     collection_unit_view, edit_collection_article_view, user_page, user_contributor_request_view
+from write_up.views_2 import rev_view
 
 urlpatterns = [
     url(r'^user_details/(?P<user_handler>[^/]+)/$', user_page, name='user_details'),
@@ -41,5 +42,7 @@ urlpatterns = [
     url(r'^request/(?P<notification_id>[0-9]+)/$', UserRequest.as_view(), name='request'),
 
     url(r'^time/$', set_timezone, name='set_timezone'),
+
+    url(r'^rev/(?P<rev1_id>[^/]+)/(?P<rev2_id>[^/]+)/$', rev_view, name='rev'),
 
 ]
